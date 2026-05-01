@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from "#/services/settings";
 import { Settings } from "#/types/settings";
 import { V1ExecutionStatus } from "#/types/v1/core";
+import { isAgentServerToolAvailable } from "./agent-server-compatibility";
 import {
   getAgentServerBaseUrl,
   getAgentServerSessionApiKey,
@@ -202,7 +203,10 @@ function getConversationSecurityAnalyzer(conversationSettings: SettingsRecord) {
 
 function getAgentTools() {
   const tools = DEFAULT_TOOL_NAMES.map((name) => ({ name, params: {} }));
-  if (browserToolsEnabled()) {
+  if (
+    browserToolsEnabled() &&
+    isAgentServerToolAvailable(BROWSER_TOOL_SET_NAME)
+  ) {
     tools.push({ name: BROWSER_TOOL_SET_NAME, params: {} });
   }
   return tools;

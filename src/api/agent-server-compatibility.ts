@@ -1,4 +1,7 @@
-import { createServerClient, type ServerInfo } from "#/api/typescript-client";
+import {
+  createServerClient,
+  type ServerInfo as BaseServerInfo,
+} from "#/api/typescript-client";
 import { HttpError } from "@openhands/typescript-client/client/http-client";
 
 export const MINIMUM_SUPPORTED_AGENT_SERVER_VERSION = "1.17.0";
@@ -6,7 +9,13 @@ const AGENT_SERVER_INFO_TIMEOUT_MS = 5000;
 
 const SEMVER_PATTERN = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/;
 
-const getServerVersion = (serverInfo: ServerInfo): string => serverInfo.version;
+export interface AgentServerInfo extends BaseServerInfo {
+  available_tools?: string[] | null;
+}
+
+let cachedAgentServerInfo: AgentServerInfo | null = null;
+
+const getServerVersion = (serverInfo: AgentServerInfo): string => serverInfo.version;
 
 const parseSemver = (
   version: string | null,
@@ -92,14 +101,27 @@ export const isAgentServerUnavailableError = (
     "name" in error &&
     error.name === "AgentServerUnavailableError");
 
+export function clearCachedAgentServerInfo() {
+  cachedAgentServerInfo = null;
+}
+
+export function isAgentServerToolAvailable(toolName: string) {
+  const availableTools = cachedAgentServerInfo?.available_tools;
+  if (!Array.isArray(availableTools)) {
+    return true;
+  }
+  return availableTools.includes(toolName);
+}
+
 export async function ensureCompatibleAgentServer() {
-  let serverInfo: ServerInfo;
+  let serverInfo: AgentServerInfo;
 
   try {
-    serverInfo = await createServerClient({
+    serverInfo = (await createServerClient({
       timeout: AGENT_SERVER_INFO_TIMEOUT_MS,
-    }).getServerInfo();
+    }).getServerInfo()) as AgentServerInfo;
   } catch (error) {
+    clearCachedAgentServerInfo();
     if (error instanceof HttpError) {
       throw error;
     }
@@ -108,6 +130,7 @@ export async function ensureCompatibleAgentServer() {
     throw new AgentServerUnavailableError(details);
   }
 
+  cachedAgentServerInfo = serverInfo;
   const serverVersion = getServerVersion(serverInfo);
 
   if (!isSupportedAgentServerVersion(serverVersion)) {

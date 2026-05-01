@@ -1,14 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import {
   AgentServerIncompatibilityError,
   AgentServerUnavailableError,
+  clearCachedAgentServerInfo,
+  isAgentServerToolAvailable,
   MINIMUM_SUPPORTED_AGENT_SERVER_VERSION,
 } from "#/api/agent-server-compatibility";
 import OptionService from "#/api/option-service/option-service.api";
 import { server } from "#/mocks/node";
 
 describe("OptionService", () => {
+  beforeEach(() => {
+    clearCachedAgentServerInfo();
+  });
+
+
   it("returns config in mock mode without a live backend", async () => {
     const config = await OptionService.getConfig();
 
@@ -65,6 +72,24 @@ describe("OptionService", () => {
         deployment_mode: "self_hosted",
       }),
     });
+  });
+
+  it("caches available_tools from server_info for later tool gating", async () => {
+    server.use(
+      http.get("/server_info", () =>
+        HttpResponse.json({
+          uptime: 0,
+          idle_time: 0,
+          version: MINIMUM_SUPPORTED_AGENT_SERVER_VERSION,
+          available_tools: ["terminal", "file_editor", "task_tracker"],
+        }),
+      ),
+    );
+
+    await OptionService.getConfig();
+
+    expect(isAgentServerToolAvailable("browser_tool_set")).toBe(false);
+    expect(isAgentServerToolAvailable("terminal")).toBe(true);
   });
 
   it("returns models from mocked LLM endpoints", async () => {
