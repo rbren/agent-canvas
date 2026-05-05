@@ -1,8 +1,17 @@
 import { DEFAULT_SETTINGS } from "#/services/settings";
 import { Settings, SettingsSchema, SettingsValue } from "#/types/settings";
-import { createSettingsClient } from "../typescript-client";
+import { createHttpClient, createSettingsClient } from "../typescript-client";
 
 const LOCAL_CACHE_KEY = "openhands-agent-server-settings";
+
+/**
+ * Response from GET /api/settings
+ */
+interface SettingsResponse {
+  agent_settings: Record<string, SettingsValue>;
+  conversation_settings: Record<string, SettingsValue>;
+  llm_api_key_is_set: boolean;
+}
 
 const deepClone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -115,22 +124,31 @@ class SettingsService {
    * Get settings from the agent server, with local cache fallback.
    * The server persists settings to disk, while localStorage acts as a cache
    * for faster initial loads and offline scenarios.
+   *
+   * Uses `X-Expose-Secrets: encrypted` header to receive cipher-encrypted
+   * secret values. These encrypted values can be safely stored client-side
+   * and passed back to the server when starting conversations (with
+   * `secrets_encrypted: true`), where they will be decrypted.
    */
   static async getSettings(): Promise<Settings> {
     try {
-      const client = createSettingsClient();
-      const response = await client.getSettings();
+      const client = createHttpClient();
+      const response = await client.get<SettingsResponse>("/api/settings", {
+        headers: {
+          "X-Expose-Secrets": "encrypted",
+        },
+      });
 
       // Convert server response to frontend format
       const fromServer: Partial<Settings> = {
-        agent_settings: response.agent_settings,
-        conversation_settings: response.conversation_settings,
-        llm_api_key_set: response.llm_api_key_is_set,
+        agent_settings: response.data.agent_settings,
+        conversation_settings: response.data.conversation_settings,
+        llm_api_key_set: response.data.llm_api_key_is_set,
       };
 
       const merged = syncDerivedSettings(fromServer);
 
-      // Update local cache
+      // Update local cache (contains encrypted secrets)
       writeLocalCache(merged);
 
       return merged;
@@ -227,8 +245,8 @@ class SettingsService {
 
     try {
       // Send to agent server for persistence
-      const client = createSettingsClient();
-      await client.updateSettings({
+      const client = createHttpClient();
+      await client.patch("/api/settings", {
         agent_settings_diff: agentSettingsDiff,
         conversation_settings_diff: conversationSettingsDiff,
       });

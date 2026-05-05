@@ -1,11 +1,27 @@
 import SettingsService from "./settings-service/settings-service.api";
-import { createSettingsClient } from "./typescript-client";
+import { createHttpClient } from "./typescript-client";
 import {
   CustomSecretPage,
   CustomSecretWithoutValue,
   SearchSecretsParams,
 } from "./secrets-service.types";
 import { Provider, ProviderOptions, ProviderToken } from "#/types/settings";
+
+/**
+ * Response from GET /api/settings/secrets
+ */
+interface SecretsListResponse {
+  secrets: Array<{ name: string; description?: string | null }>;
+}
+
+/**
+ * Request for PUT /api/settings/secrets
+ */
+interface CreateSecretRequest {
+  name: string;
+  value: string;
+  description?: string | null;
+}
 
 const GIT_PROVIDER_STORAGE_KEY = "openhands-agent-server-git-provider-tokens";
 
@@ -96,17 +112,19 @@ const buildProviderTokensSet = (
 export class SecretsService {
   /**
    * Search/list custom secrets with pagination support.
-   * Uses the agent-server settings client for local persistence.
+   * Uses the agent-server settings API for local persistence.
    */
   static async searchSecrets(
     params: SearchSecretsParams = {},
   ): Promise<CustomSecretPage> {
     try {
-      const client = createSettingsClient();
-      const response = await client.listSecrets();
+      const client = createHttpClient();
+      const response = await client.get<SecretsListResponse>(
+        "/api/settings/secrets",
+      );
 
       // Filter by name if requested
-      let items = response.secrets.map((s) => ({
+      let items = response.data.secrets.map((s) => ({
         name: s.name,
         description: s.description ?? undefined,
       }));
@@ -156,8 +174,12 @@ export class SecretsService {
    */
   static async createSecret(name: string, value: string, description?: string) {
     try {
-      const client = createSettingsClient();
-      await client.createSecret({ name, value, description: description ?? null });
+      const client = createHttpClient();
+      await client.put<CreateSecretRequest>("/api/settings/secrets", {
+        name,
+        value,
+        description: description ?? null,
+      });
       return true;
     } catch {
       return false;
@@ -173,9 +195,15 @@ export class SecretsService {
     try {
       // For agent-server, we can only update by re-creating with a new value
       // This is a limitation - in practice, users should delete and recreate
-      const client = createSettingsClient();
-      const currentValue = await client.getSecretValue(name);
-      await client.createSecret({ name, value: currentValue, description: description ?? null });
+      const client = createHttpClient();
+      const valueResponse = await client.get<string>(
+        `/api/settings/secrets/${name}`,
+      );
+      await client.put<CreateSecretRequest>("/api/settings/secrets", {
+        name,
+        value: valueResponse.data,
+        description: description ?? null,
+      });
       return true;
     } catch {
       return false;
@@ -187,8 +215,8 @@ export class SecretsService {
    */
   static async deleteSecret(name: string) {
     try {
-      const client = createSettingsClient();
-      await client.deleteSecret(name);
+      const client = createHttpClient();
+      await client.delete(`/api/settings/secrets/${name}`);
       return true;
     } catch {
       return false;

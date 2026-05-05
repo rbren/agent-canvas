@@ -1,6 +1,10 @@
 import { Provider } from "#/types/settings";
 import { SuggestedTask } from "#/utils/types";
-import { getAgentServerBaseUrl, getAgentServerWorkingDir } from "../agent-server-config";
+import {
+  buildConversationWorkingDir,
+  getAgentServerBaseUrl,
+  getAgentServerWorkingDir,
+} from "../agent-server-config";
 import {
   DirectConversationInfo,
   buildStartConversationRequest,
@@ -17,6 +21,7 @@ import {
   createRemoteWorkspace,
   createVSCodeClient,
 } from "../typescript-client";
+import SettingsService from "../settings-service/settings-service.api";
 import type {
   GetHooksResponse,
   GetSkillsResponse,
@@ -51,12 +56,16 @@ class V1ConversationService {
     conversationInstructions?: string,
     plugins?: PluginSpec[],
   ): Promise<V1AppConversationStartTask> {
+    const settings = await SettingsService.getSettings();
     const conversationId = crypto.randomUUID();
+    const workingDir = buildConversationWorkingDir(conversationId);
     const payload = buildStartConversationRequest({
+      settings,
       query: initialUserMsg,
       conversationInstructions,
       plugins,
       conversationId,
+      workingDir,
     });
 
     const response = await createHttpClient().post<DirectConversationInfo>(
