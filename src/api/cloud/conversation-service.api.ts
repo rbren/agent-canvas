@@ -115,6 +115,25 @@ export async function downloadCloudConversation(
 }
 
 /**
+ * Delete a v1 app-conversation on the cloud SaaS. Mirrors the local
+ * `V1ConversationService.deleteConversation` interface but routes
+ * through the bundled agent-server's cloud proxy and hits
+ * `DELETE /api/v1/app-conversations/{id}`, which returns a JSON
+ * `Success` envelope (discarded here — the caller only needs to know
+ * the request didn't error).
+ */
+export async function deleteCloudConversation(
+  conversationId: string,
+): Promise<void> {
+  const backend = getActiveCloudBackend();
+  await callCloudProxy<unknown>({
+    backend,
+    method: "DELETE",
+    path: `/api/v1/app-conversations/${conversationId}`,
+  });
+}
+
+/**
  * Fetch a single v1 app-conversation start task. Mirrors OpenHands'
  * `V1ConversationService.getStartTask` — uses the batch search endpoint
  * with a single id and unwraps the first result.

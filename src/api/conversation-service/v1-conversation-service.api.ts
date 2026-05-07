@@ -12,6 +12,7 @@ import { callCloudProxy } from "../cloud/proxy";
 import {
   batchGetCloudConversations,
   createCloudAppConversation,
+  deleteCloudConversation,
   downloadCloudConversation,
   getCloudAppConversationStartTask,
   searchCloudConversations,
@@ -415,7 +416,11 @@ class V1ConversationService {
   }
 
   static async deleteConversation(conversationId: string): Promise<void> {
-    await createHttpClient().delete(`/api/conversations/${conversationId}`);
+    if (getActiveBackend().backend.kind === "cloud") {
+      await deleteCloudConversation(conversationId);
+    } else {
+      await createHttpClient().delete(`/api/conversations/${conversationId}`);
+    }
     removeStoredConversationMetadata(conversationId);
   }
 

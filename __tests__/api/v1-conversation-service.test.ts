@@ -5,6 +5,7 @@ import V1ConversationService from "#/api/conversation-service/v1-conversation-se
 const {
   mockHttpGet,
   mockHttpPost,
+  mockHttpDelete,
   mockFileUpload,
   mockCreateHttpClient,
   mockCreateRemoteWorkspace,
@@ -13,6 +14,7 @@ const {
 } = vi.hoisted(() => ({
   mockHttpGet: vi.fn(),
   mockHttpPost: vi.fn(),
+  mockHttpDelete: vi.fn(),
   mockFileUpload: vi.fn(),
   mockCreateHttpClient: vi.fn(),
   mockCreateRemoteWorkspace: vi.fn(),
@@ -49,13 +51,14 @@ describe("V1ConversationService", () => {
     vi.clearAllMocks();
     mockHttpGet.mockReset();
     mockHttpPost.mockReset();
+    mockHttpDelete.mockReset();
     mockFileUpload.mockReset();
 
     mockCreateHttpClient.mockReturnValue({
       get: mockHttpGet,
       post: mockHttpPost,
       patch: vi.fn(),
-      delete: vi.fn(),
+      delete: mockHttpDelete,
     });
     mockCreateRemoteWorkspace.mockReturnValue({
       fileUpload: mockFileUpload,
@@ -171,6 +174,28 @@ describe("V1ConversationService", () => {
         expect.objectContaining({ responseType: "blob" }),
       );
       expect(result).toBe(zipBlob);
+    });
+  });
+
+  describe("deleteConversation local branch", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+      __resetActiveStoreForTests();
+    });
+
+    afterEach(() => {
+      window.localStorage.clear();
+      __resetActiveStoreForTests();
+    });
+
+    it("hits the local /api/conversations/{id} endpoint when active backend is local", async () => {
+      mockHttpDelete.mockResolvedValue({ data: undefined });
+
+      await V1ConversationService.deleteConversation("conv-abc");
+
+      expect(mockHttpDelete).toHaveBeenCalledWith(
+        "/api/conversations/conv-abc",
+      );
     });
   });
 
