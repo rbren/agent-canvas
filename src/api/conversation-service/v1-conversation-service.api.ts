@@ -1,5 +1,6 @@
 import { Provider } from "#/types/settings";
 import { buildHttpBaseUrl } from "#/utils/websocket-url";
+import { v4 as uuidv4 } from "uuid";
 import {
   buildConversationWorkingDir,
   getAgentServerWorkingDir,
@@ -106,7 +107,7 @@ class V1ConversationService {
     }
 
     const settings = await SettingsService.getSettings();
-    const conversationId = crypto.randomUUID();
+    const conversationId = uuidv4();
     const workingDir =
       workingDirOverride ?? buildConversationWorkingDir(conversationId);
 
