@@ -7,11 +7,10 @@
  * - Please do NOT modify this file.
  */
 
-const PACKAGE_VERSION = "2.13.4";
-const INTEGRITY_CHECKSUM = "4db4a41e972cec1b64cc569c66952d82";
-const IS_MOCKED_RESPONSE = Symbol("isMockedResponse");
-const activeClientIds = new Set();
-import { v4 as uuidv4 } from "uuid";
+const PACKAGE_VERSION = '2.14.2'
+const INTEGRITY_CHECKSUM = '4db4a41e972cec1b64cc569c66952d82'
+const IS_MOCKED_RESPONSE = Symbol('isMockedResponse')
+const activeClientIds = new Set()
 
 addEventListener("install", function () {
   self.skipWaiting();
@@ -113,9 +112,9 @@ addEventListener("fetch", function (event) {
     return;
   }
 
-  const requestId = uuidv4();
-  event.respondWith(handleRequest(event, requestId, requestInterceptedAt));
-});
+  const requestId = crypto.randomUUID()
+  event.respondWith(handleRequest(event, requestId, requestInterceptedAt))
+})
 
 /**
  * @param {FetchEvent} event
