@@ -17,11 +17,12 @@ export default [
       route("skills", "routes/skills-settings.tsx"),
       route("integrations", "routes/git-settings.tsx"),
       route("app", "routes/app-settings.tsx"),
-      route("agent-server", "routes/agent-server-settings.tsx"),
       route("secrets", "routes/secrets-settings.tsx"),
     ]),
     route("conversations/:conversationId", "routes/conversation.tsx"),
     route("oauth/device/verify", "routes/device-verify.tsx"),
+    route("automations", "routes/automations-list.tsx"),
+    route("automations/:automationId", "routes/automation-detail.tsx"),
   ]),
   route(
     "shared/conversations/:conversationId",

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildStartConversationRequest,
   getDefaultConversationTitle,
-  toV1AppConversation,
+  toAppConversation,
   type DirectConversationInfo,
 } from "#/api/agent-server-adapter";
 import { DEFAULT_SETTINGS } from "#/services/settings";
@@ -220,7 +220,7 @@ describe("getDefaultConversationTitle", () => {
   });
 });
 
-describe("toV1AppConversation", () => {
+describe("toAppConversation", () => {
   const baseInfo: DirectConversationInfo = {
     id: "372eb-1234-5678-9abc",
     created_at: "2026-01-01T00:00:00Z",
@@ -228,27 +228,27 @@ describe("toV1AppConversation", () => {
   };
 
   it("falls back to the default title when the backend returns null", () => {
-    const result = toV1AppConversation({ ...baseInfo, title: null });
+    const result = toAppConversation({ ...baseInfo, title: null });
     expect(result.title).toBe("Conversation 372eb");
   });
 
   it("falls back to the default title when the backend returns undefined", () => {
-    const result = toV1AppConversation({ ...baseInfo });
+    const result = toAppConversation({ ...baseInfo });
     expect(result.title).toBe("Conversation 372eb");
   });
 
   it("falls back to the default title when the backend returns an empty string", () => {
-    const result = toV1AppConversation({ ...baseInfo, title: "" });
+    const result = toAppConversation({ ...baseInfo, title: "" });
     expect(result.title).toBe("Conversation 372eb");
   });
 
   it("falls back to the default title when the backend returns whitespace only", () => {
-    const result = toV1AppConversation({ ...baseInfo, title: "   " });
+    const result = toAppConversation({ ...baseInfo, title: "   " });
     expect(result.title).toBe("Conversation 372eb");
   });
 
   it("preserves a backend-provided title when one is set", () => {
-    const result = toV1AppConversation({
+    const result = toAppConversation({
       ...baseInfo,
       title: "My real title",
     });
