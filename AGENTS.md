@@ -22,6 +22,9 @@
 - `__tests__/vite-config.test.ts` should import `vite.config` directly under `// @vitest-environment node`; spawning plain `node -e 'import ./vite.config.ts'` is not portable across Node patch releases in CI.
 - `vitest.setup.ts` must guard DOM-specific globals (`HTMLCanvasElement`, `HTMLElement`, `window`) because some suites run in the Node environment instead of jsdom.
 - `__tests__/components/providers/posthog-wrapper.test.tsx` must wrap `PostHogWrapper` in a `QueryClientProvider`; the wrapper now reads its client from React Query context instead of importing the global singleton.
+- WebSocket hook regression note: `__tests__/hooks/use-websocket.test.ts`'s `onClose` callback assertion was flaky against the shared MSW websocket server in CI; keep that single test on a deterministic stubbed `WebSocket` close path instead of relying on MSW close timing.
+- Library i18n regression note: `__tests__/i18n/library-namespace.test.ts` imports `../../src/index`, which can take >5s under the full Vitest suite after `vi.resetModules()`. Keep an explicit per-test timeout (currently 15s) so the suite doesn't fail on slow workers.
+
 
 - `@openhands/typescript-client` is consumed directly from `github:OpenHands/typescript-client#4716d2e`; that package ships the needed subpath exports for `client/http-client`, `events/remote-events-list`, and `workspace/remote-workspace`.
 - Shared TypeScript-client adapters live in `src/api/typescript-client.ts`; prefer those helpers for agent-server-backed REST/workspace/event/VS Code calls before falling back to `open-hands-axios`.
