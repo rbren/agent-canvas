@@ -1,6 +1,12 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub, MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +16,10 @@ import {
   useActiveBackendContext,
 } from "#/contexts/active-backend-context";
 import { BackendSelector } from "#/components/features/backends/backend-selector";
+import {
+  __resetEnvironmentSwitchOverlayForTests,
+  EnvironmentSwitchOverlay,
+} from "#/components/features/backends/environment-switch-overlay";
 
 import {
   getCloudOrganizations,
@@ -18,6 +28,7 @@ import {
   getCurrentCloudApiKey,
 } from "#/api/cloud/organization-service.api";
 import { createServerClient } from "#/api/typescript-client";
+import { displayErrorToast } from "#/utils/custom-toast-handlers";
 
 vi.mock("#/api/cloud/organization-service.api", () => ({
   getCloudOrganizations: vi.fn(),
@@ -28,6 +39,10 @@ vi.mock("#/api/cloud/organization-service.api", () => ({
 
 vi.mock("#/api/typescript-client", () => ({
   createServerClient: vi.fn(),
+}));
+
+vi.mock("#/utils/custom-toast-handlers", () => ({
+  displayErrorToast: vi.fn(),
 }));
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -94,11 +109,13 @@ beforeEach(() => {
     // rest of the ServerClient surface is unused here, so a partial cast
     // is sufficient.
   } as unknown as ReturnType<typeof createServerClient>);
+  vi.mocked(displayErrorToast).mockReset();
 });
 
 afterEach(() => {
   window.localStorage.clear();
   __resetActiveStoreForTests();
+  __resetEnvironmentSwitchOverlayForTests();
 });
 
 describe("BackendSelector", () => {
@@ -223,18 +240,14 @@ describe("BackendSelector", () => {
     await openDropdown();
 
     await waitFor(() => {
-      expect(
-        screen.getByText("ProdPersonal – Personal"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("ProdPersonal – Personal")).toBeInTheDocument();
     });
     expect(screen.getByText("ProdAcme – Acme Inc")).toBeInTheDocument();
     // Inaccessible orgs must not appear under either backend.
     expect(
       screen.queryByText("ProdPersonal – Acme Inc"),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("ProdAcme – Personal"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("ProdAcme – Personal")).not.toBeInTheDocument();
     expect(screen.queryByText(/Beta Co/)).not.toBeInTheDocument();
   });
 
@@ -402,6 +415,157 @@ describe("BackendSelector", () => {
     await user.click(screen.getByText("Local 1"));
 
     expect(await screen.findByTestId("home")).toBeInTheDocument();
+  });
+
+  it("keeps the environment-switch overlay visible even after the selector unmounts mid-switch", async () => {
+    // Arrange — selector and overlay are rendered in independent trees
+    // so the selector can be torn down without taking the overlay with
+    // it. This mirrors production: ContextMenuContainer's click-outside
+    // handler unmounts UserContextMenu (and BackendSelector) the moment
+    // the dropdown's portaled option list is clicked, so the trigger
+    // must not depend on BackendSelector staying mounted.
+    const selectorRender = renderWithProviders(
+      <TestSeed
+        onMount={(ctx) => {
+          ctx.addBackend({
+            name: "Acme Local",
+            host: "http://localhost:9000",
+            apiKey: "k",
+            kind: "local",
+          });
+        }}
+      >
+        <BackendSelector />
+      </TestSeed>,
+    );
+    render(<EnvironmentSwitchOverlay />);
+
+    // Act — select a different backend, then immediately unmount the
+    // selector (the click itself would do this in production via the
+    // outside-click handler).
+    const user = await openDropdown();
+    await user.click(screen.getByText("Acme Local"));
+    selectorRender.unmount();
+
+    // Assert — the overlay is still in the DOM with the chosen target
+    expect(screen.getByTestId("environment-switch-overlay")).toHaveAttribute(
+      "data-target",
+      "Acme Local",
+    );
+  });
+
+  it("does not open backend modals on mouse down alone", async () => {
+    renderWithProviders(<BackendSelector />);
+
+    await openDropdown();
+
+    fireEvent.mouseDown(screen.getByTestId("add-backend-menu-item"));
+    expect(screen.queryByTestId("add-backend-modal")).not.toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByTestId("manage-backends-menu-item"));
+    expect(
+      screen.queryByTestId("manage-backends-modal"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an error toast and keeps the active backend when cloud org switching fails", async () => {
+    vi.mocked(getCloudOrganizations).mockResolvedValue({
+      items: [{ id: "org-2", name: "Acme Inc" }],
+      currentOrgId: "org-2",
+    });
+    vi.mocked(switchCloudOrganization).mockRejectedValueOnce(
+      new Error("switch failed"),
+    );
+
+    let productionId = "";
+    renderWithProviders(
+      <TestSeed
+        onMount={(ctx) => {
+          productionId = ctx.addBackend({
+            name: "Production",
+            host: "https://app.all-hands.dev",
+            apiKey: "bearer-key",
+            kind: "cloud",
+          }).id;
+        }}
+      >
+        <BackendSelector />
+      </TestSeed>,
+    );
+
+    const user = await openDropdown();
+    await waitFor(() => {
+      expect(screen.getByText("Production – Acme Inc")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Production – Acme Inc"));
+
+    await waitFor(() => {
+      expect(displayErrorToast).toHaveBeenCalledWith("switch failed");
+    });
+
+    const stored = JSON.parse(
+      window.localStorage.getItem("openhands-active-backend") ?? "null",
+    );
+    expect(stored?.backendId).not.toBe(productionId);
+    expect(stored?.orgId ?? null).toBeNull();
+  });
+
+  it("renders the backend footer actions and opens/closes the add modal", async () => {
+    renderWithProviders(<BackendSelector />);
+
+    const user = await openDropdown();
+    expect(screen.getByTestId("add-backend-menu-item")).toBeInTheDocument();
+    expect(screen.getByTestId("manage-backends-menu-item")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("add-backend-menu-item"));
+    expect(await screen.findByTestId("add-backend-modal")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("add-backend-cancel"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("add-backend-modal")).not.toBeInTheDocument();
+    });
+  });
+
+  it("opens the manage backends modal and removes a backend", async () => {
+    renderWithProviders(
+      <TestSeed
+        onMount={(ctx) => {
+          ctx.addBackend({
+            name: "Local 1",
+            host: "http://localhost:9000",
+            apiKey: "k",
+            kind: "local",
+          });
+        }}
+      >
+        <BackendSelector />
+      </TestSeed>,
+    );
+
+    const user = await openDropdown();
+    await user.click(screen.getByTestId("manage-backends-menu-item"));
+
+    expect(
+      await screen.findByTestId("manage-backends-modal"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("manage-backends-row-Local 1"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("manage-backends-remove-Local 1"));
+    expect(await screen.findByTestId("confirmation-modal")).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("confirm-button"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("manage-backends-row-Local 1"),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      JSON.parse(window.localStorage.getItem("openhands-backends") ?? "[]"),
+    ).toEqual([]);
   });
 
   it("does not redirect when switching backends from a non-conversation route", async () => {

@@ -1,7 +1,8 @@
 import React from "react";
+import type { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
 import { useMatch, useNavigate } from "react-router";
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { Dropdown } from "#/ui/dropdown/dropdown";
 import { DropdownOption } from "#/ui/dropdown/types";
 import { useActiveBackendContext } from "#/contexts/active-backend-context";
@@ -14,8 +15,15 @@ import {
 import { useSwitchCloudOrganization } from "#/hooks/mutation/use-switch-cloud-organization";
 import { I18nKey } from "#/i18n/declaration";
 import type { Backend } from "#/api/backend-registry/types";
+import {
+  ENVIRONMENT_SWITCH_SETACTIVE_DELAY_MS,
+  triggerEnvironmentSwitch,
+} from "#/components/features/backends/environment-switch-overlay";
+import { displayErrorToast } from "#/utils/custom-toast-handlers";
+import { retrieveAxiosErrorMessage } from "#/utils/retrieve-axios-error-message";
 import { AddBackendModal } from "./add-backend-modal";
 import { BackendStatusDot } from "./backend-status-dot";
+import { ManageBackendsModal } from "./manage-backends-modal";
 
 const VALUE_SEPARATOR = "::";
 
@@ -122,6 +130,8 @@ export function BackendSelector({
   const navigate = useNavigate();
   const conversationMatch = useMatch("/conversations/:conversationId");
   const [addBackendModalOpen, setAddBackendModalOpen] = React.useState(false);
+  const [manageBackendsModalOpen, setManageBackendsModalOpen] =
+    React.useState(false);
 
   const bundledLabel = t(I18nKey.BACKEND$LOCAL_ROW);
   const personalWorkspaceLabel = t(I18nKey.BACKEND$PERSONAL_WORKSPACE);
@@ -181,16 +191,45 @@ export function BackendSelector({
       });
   }, [active, cloudOrgs, currentUserIds, setActive, switchOrg]);
 
+  const openAddBackendModal = React.useCallback(() => {
+    setAddBackendModalOpen(true);
+  }, []);
+
+  const openManageBackendsModal = React.useCallback(() => {
+    setManageBackendsModalOpen(true);
+  }, []);
+
+  const preventDropdownMenuClose = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [],
+  );
+
   const addBackendFooter = (
-    <button
-      type="button"
-      data-testid="add-backend-menu-item"
-      onClick={() => setAddBackendModalOpen(true)}
-      className="flex w-full items-center gap-2 px-2 py-2 rounded-md text-sm cursor-pointer text-white hover:bg-[#5C5D62]"
-    >
-      <Plus width={16} height={16} className="text-white shrink-0" />
-      {t(I18nKey.BACKEND$ADD)}
-    </button>
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        data-testid="add-backend-menu-item"
+        onMouseDown={preventDropdownMenuClose}
+        onClick={openAddBackendModal}
+        className="flex w-full items-center gap-2 px-2 py-2 rounded-md text-sm cursor-pointer text-white hover:bg-[#5C5D62]"
+      >
+        <Plus width={16} height={16} className="text-white shrink-0" />
+        {t(I18nKey.BACKEND$ADD)}
+      </button>
+      <button
+        type="button"
+        data-testid="manage-backends-menu-item"
+        onMouseDown={preventDropdownMenuClose}
+        onClick={openManageBackendsModal}
+        className="flex w-full items-center gap-2 px-2 py-2 rounded-md text-sm cursor-pointer text-white hover:bg-[#5C5D62]"
+      >
+        <Settings width={16} height={16} className="text-white shrink-0" />
+        {t(I18nKey.BACKEND$MANAGE)}
+      </button>
+    </div>
   );
 
   return (
@@ -212,33 +251,25 @@ export function BackendSelector({
           const { backendId, orgId } = parseOptionValue(item.value);
           const target = backends.find((b) => b.id === backendId);
 
-          // Cloud + org pick: fire `/switch` FIRST against the explicit
-          // target backend, then update the active selection after it
-          // resolves. This ensures the SaaS-side `current_org_id` is
-          // already in place before any of our backend-keyed queries
-          // refetch — they fire exactly once, with the correct context.
-          //
-          // We use `mutateAsync` + `await` (rather than `mutate(... ,
-          // { onSuccess })`) because per-call onSuccess callbacks were
-          // observed not to run reliably for this hook in practice; the
-          // promise-based shape is unambiguous.
+          triggerEnvironmentSwitch(item.label);
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, ENVIRONMENT_SWITCH_SETACTIVE_DELAY_MS);
+          });
+
           if (orgId && target?.kind === "cloud") {
             try {
               await switchOrg({ orgId, backend: target });
-            } catch {
-              // Error is surfaced by the mutation cache's global handler.
+            } catch (error) {
+              displayErrorToast(
+                retrieveAxiosErrorMessage(error as AxiosError) ||
+                  t(I18nKey.ERROR$GENERIC),
+              );
               return;
             }
           }
 
-          // Pure backend swap (local-↔-bundled or backend-only cloud
-          // selection without an org) skips `/switch` and updates active
-          // directly; cloud-with-org falls through here after `/switch`.
           setActive(backendId, orgId);
 
-          // The current conversation belongs to the previous backend
-          // and is no longer reachable under the new one — redirect home
-          // so the user lands on a coherent screen.
           if (conversationMatch) navigate("/conversations");
         }}
         placeholder={bundledLabel}
@@ -248,6 +279,11 @@ export function BackendSelector({
       />
       {addBackendModalOpen ? (
         <AddBackendModal onClose={() => setAddBackendModalOpen(false)} />
+      ) : null}
+      {manageBackendsModalOpen ? (
+        <ManageBackendsModal
+          onClose={() => setManageBackendsModalOpen(false)}
+        />
       ) : null}
     </>
   );
