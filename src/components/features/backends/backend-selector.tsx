@@ -10,6 +10,10 @@ import { useCloudCurrentUserId } from "#/hooks/query/use-cloud-current-user-id";
 import { useSwitchCloudOrganization } from "#/hooks/mutation/use-switch-cloud-organization";
 import { I18nKey } from "#/i18n/declaration";
 import type { Backend } from "#/api/backend-registry/types";
+import {
+  ENVIRONMENT_SWITCH_SETACTIVE_DELAY_MS,
+  triggerEnvironmentSwitch,
+} from "#/components/features/backends/environment-switch-overlay";
 import { AddBackendModal } from "./add-backend-modal";
 
 const VALUE_SEPARATOR = "::";
@@ -149,6 +153,7 @@ export function BackendSelector({
     <button
       type="button"
       data-testid="add-backend-menu-item"
+      onMouseDown={(event) => event.preventDefault()}
       onClick={() => setAddBackendModalOpen(true)}
       className="flex w-full items-center gap-2 px-2 py-2 rounded-md text-sm cursor-pointer text-white hover:bg-[#5C5D62]"
     >
@@ -162,9 +167,7 @@ export function BackendSelector({
       <Dropdown
         testId="backend-selector"
         key={`${activeValue}-${activeOption?.label ?? ""}`}
-        defaultValue={
-          activeOption ?? { value: activeValue, label: bundledLabel }
-        }
+        defaultValue={activeOption ?? { value: activeValue, label: bundledLabel }}
         footer={addBackendFooter}
         openUpward={openUpward}
         onChange={async (item) => {
@@ -172,33 +175,21 @@ export function BackendSelector({
           const { backendId, orgId } = parseOptionValue(item.value);
           const target = backends.find((b) => b.id === backendId);
 
-          // Cloud + org pick: fire `/switch` FIRST against the explicit
-          // target backend, then update the active selection after it
-          // resolves. This ensures the SaaS-side `current_org_id` is
-          // already in place before any of our backend-keyed queries
-          // refetch — they fire exactly once, with the correct context.
-          //
-          // We use `mutateAsync` + `await` (rather than `mutate(... ,
-          // { onSuccess })`) because per-call onSuccess callbacks were
-          // observed not to run reliably for this hook in practice; the
-          // promise-based shape is unambiguous.
+          triggerEnvironmentSwitch(item.label);
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, ENVIRONMENT_SWITCH_SETACTIVE_DELAY_MS);
+          });
+
           if (orgId && target?.kind === "cloud") {
             try {
               await switchOrg({ orgId, backend: target });
             } catch {
-              // Error is surfaced by the mutation cache's global handler.
               return;
             }
           }
 
-          // Pure backend swap (local-↔-bundled or backend-only cloud
-          // selection without an org) skips `/switch` and updates active
-          // directly; cloud-with-org falls through here after `/switch`.
           setActive(backendId, orgId);
 
-          // The current conversation belongs to the previous backend
-          // and is no longer reachable under the new one — redirect home
-          // so the user lands on a coherent screen.
           if (conversationMatch) navigate("/conversations");
         }}
         placeholder={bundledLabel}

@@ -86,22 +86,18 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
   // Fetch in-progress start tasks
   const { data: startTasks } = useStartTasks();
 
-  // Flatten all pages into a single array of conversations (V1 uses 'items' instead of 'results')
-  const conversations = data?.pages.flatMap((page) => page.items) ?? [];
+  const conversations = React.useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
+    [data],
+  );
 
-  // Partition conversations by last_updated cutoff (1 hour). Recent ones are
-  // always visible; older ones are hidden by default behind a show/hide toggle.
-  // The partition is recomputed only when the underlying paged data changes;
-  // `conversations` is rebuilt by flatMap on every render, so depending on
-  // `data` instead keeps the cutoff stable across unrelated re-renders.
   const { recent: recentConversations, older: olderConversations } =
-    React.useMemo(
-      () => partitionByCutoff(conversations),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [data],
-    );
+    React.useMemo(() => partitionByCutoff(conversations), [conversations]);
 
-  const { mutate: deleteConversation } = useDeleteConversation();
+  const {
+    mutate: deleteConversation,
+    mutateAsync: deleteConversationAsync,
+  } = useDeleteConversation();
   const { mutate: pauseConversation } = useUnifiedPauseConversation();
   const { mutate: updateConversation } = useUpdateConversation();
 
@@ -160,15 +156,22 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
     }
   };
 
-  const handleConfirmDeleteOlder = () => {
+  const handleConfirmDeleteOlder = async () => {
     const idsToDelete = olderConversations.map((c) => c.id);
-    const willClearActive =
+    const results = await Promise.allSettled(
+      idsToDelete.map((conversationId) =>
+        deleteConversationAsync({ conversationId }),
+      ),
+    );
+
+    const deletedIds = results.flatMap((result, index) =>
+      result.status === "fulfilled" ? [idsToDelete[index]] : [],
+    );
+
+    if (
       currentConversationId !== null &&
-      idsToDelete.includes(currentConversationId);
-    for (const id of idsToDelete) {
-      deleteConversation({ conversationId: id });
-    }
-    if (willClearActive) {
+      deletedIds.includes(currentConversationId)
+    ) {
       navigate("/conversations");
     }
   };
@@ -340,7 +343,7 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
             count: olderConversations.length,
           })}
           onConfirm={() => {
-            handleConfirmDeleteOlder();
+            void handleConfirmDeleteOlder();
             setConfirmDeleteOlderVisible(false);
           }}
           onCancel={() => setConfirmDeleteOlderVisible(false)}

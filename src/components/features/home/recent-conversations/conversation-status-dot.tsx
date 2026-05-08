@@ -8,8 +8,7 @@ interface ConversationStatusDotProps {
 
 type Visual = "check" | "working" | "paused" | "error" | "unknown";
 
-const FINISHED_GREEN = "#1FBD53";
-const WORKING_GREEN = "#1FBD53";
+const SUCCESS_GREEN = "#1FBD53";
 const PAUSED_GRAY = "#A3A3A3";
 const ERROR_RED = "#FF684E";
 const UNKNOWN_GRAY = "#3C3C49";
@@ -47,6 +46,59 @@ const labelKeyFor = (visual: Visual): string => {
   }
 };
 
+function renderIndicator(visual: Visual) {
+  switch (visual) {
+    case "check":
+      return (
+        <svg
+          data-testid="conversation-status-check"
+          viewBox="0 0 12 12"
+          className="w-2.5 h-2.5"
+          fill="none"
+          stroke={SUCCESS_GREEN}
+          strokeWidth={2.25}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2.5 6.5 5 9l4.5-5.5" />
+        </svg>
+      );
+    case "working":
+      return (
+        <span
+          data-testid="conversation-status-working"
+          className="w-1.5 h-1.5 rounded-full animate-pulse"
+          style={{ backgroundColor: SUCCESS_GREEN }}
+        />
+      );
+    case "paused":
+      return (
+        <span
+          data-testid="conversation-status-paused"
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: PAUSED_GRAY }}
+        />
+      );
+    case "error":
+      return (
+        <span
+          data-testid="conversation-status-error"
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: ERROR_RED }}
+        />
+      );
+    default:
+      return (
+        <span
+          data-testid="conversation-status-unknown"
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: UNKNOWN_GRAY }}
+        />
+      );
+  }
+}
+
 export function ConversationStatusDot({
   executionStatus,
 }: ConversationStatusDotProps) {
@@ -54,60 +106,7 @@ export function ConversationStatusDot({
 
   const visual = visualFor(executionStatus);
   const label = t(labelKeyFor(visual));
-
-  // Fixed 10x10 box so all variants share the same footprint and avoid layout
-  // shift when the agent transitions between states.
-  const indicator = (() => {
-    switch (visual) {
-      case "check":
-        return (
-          <svg
-            data-testid="conversation-status-check"
-            viewBox="0 0 12 12"
-            className="w-2.5 h-2.5"
-            fill="none"
-            stroke={FINISHED_GREEN}
-            strokeWidth={2.25}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M2.5 6.5 5 9l4.5-5.5" />
-          </svg>
-        );
-      case "working":
-        return (
-          <span
-            data-testid="conversation-status-working"
-            className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ backgroundColor: WORKING_GREEN }}
-          />
-        );
-      case "paused":
-        return (
-          <span
-            data-testid="conversation-status-paused"
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: PAUSED_GRAY }}
-          />
-        );
-      case "error":
-        return (
-          <span
-            data-testid="conversation-status-error"
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: ERROR_RED }}
-          />
-        );
-      default:
-        return (
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: UNKNOWN_GRAY }}
-          />
-        );
-    }
-  })();
+  const indicator = renderIndicator(visual);
 
   return (
     <StyledTooltip
