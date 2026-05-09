@@ -19,6 +19,15 @@ export interface ProfileDetailResponse {
   api_key_set: boolean;
 }
 
+/**
+ * Secret exposure mode for X-Expose-Secrets header on profile endpoints.
+ *
+ * - undefined: Returns nulled api_key with api_key_set indicator
+ * - "encrypted": Returns cipher-encrypted values (safe for frontend to round-trip)
+ * - "plaintext": Returns raw secret values (backend use only!)
+ */
+export type ProfileExposeSecretsMode = "encrypted" | "plaintext" | undefined;
+
 export interface SaveLlmProfileRequest {
   /**
    * LLM configuration to save. If omitted, the backend will snapshot
@@ -49,9 +58,17 @@ class ProfilesService {
     return data;
   }
 
-  static async getProfile(name: string): Promise<ProfileDetailResponse> {
+  static async getProfile(
+    name: string,
+    exposeSecrets?: ProfileExposeSecretsMode,
+  ): Promise<ProfileDetailResponse> {
+    const headers: Record<string, string> = {};
+    if (exposeSecrets) {
+      headers["X-Expose-Secrets"] = exposeSecrets;
+    }
     const { data } = await openHands.get<ProfileDetailResponse>(
       `/api/profiles/${encodeURIComponent(name)}`,
+      { headers },
     );
     return data;
   }

@@ -20,7 +20,10 @@ import {
 } from "#/utils/sdk-settings-schema";
 import { DEFAULT_SETTINGS } from "#/services/settings";
 import { useSaveLlmProfile } from "#/hooks/mutation/use-save-llm-profile";
-import type { LlmProfileSummary } from "#/api/profiles-service/profiles-service.api";
+import { useRenameLlmProfile } from "#/hooks/mutation/use-rename-llm-profile";
+import ProfilesService, {
+  type LlmProfileSummary,
+} from "#/api/profiles-service/profiles-service.api";
 import {
   deriveProfileNameFromModel,
   PROFILE_NAME_PATTERN,
@@ -119,10 +122,15 @@ export function LlmSettingsScreen({
   );
 
   const saveProfile = useSaveLlmProfile();
+  const renameProfile = useRenameLlmProfile();
 
   // Edit mode: "none" = show profiles list, "add" = new profile form, "edit" = editing existing
   const [editMode, setEditMode] = React.useState<EditMode>("none");
   const [profileName, setProfileName] = React.useState("");
+  // Track the original profile name when editing (to detect renames)
+  const [originalProfileName, setOriginalProfileName] = React.useState<
+    string | null
+  >(null);
 
   const defaultModel = String(
     (DEFAULT_SETTINGS.agent_settings?.llm as Record<string, unknown>)?.model ??
@@ -322,22 +330,76 @@ export function LlmSettingsScreen({
       const derivedName = modelValue
         ? deriveProfileNameFromModel(modelValue)
         : null;
-      const name = userName || derivedName;
+      const targetName = userName || derivedName;
 
-      if (name && modelValue) {
+      if (targetName && modelValue) {
         try {
+          // When editing an existing profile, check if name changed
+          const isEditing = editMode === "edit" && originalProfileName;
+          const nameChanged = isEditing && targetName !== originalProfileName;
+
+          if (nameChanged) {
+            // Rename first, then save config to the new name
+            await renameProfile.mutateAsync({
+              name: originalProfileName,
+              newName: targetName,
+            });
+          }
+
+          // Check if user provided a new API key
+          const hasNewApiKey = apiKeyValue && apiKeyValue.trim().length > 0;
+
+          // Build LLM config
+          const llmConfig: {
+            model: string;
+            base_url?: string | null;
+            api_key?: string | null;
+          } & Record<string, unknown> = {
+            model: modelValue,
+            base_url: baseUrlValue || null,
+          };
+
+          // When editing an existing profile without a new API key, we need to
+          // preserve the existing API key by fetching it with encryption and
+          // passing it back in the save request
+          if (isEditing && !hasNewApiKey) {
+            // Profile name to fetch - use the renamed name if we just renamed
+            const profileToFetch = nameChanged ? targetName : originalProfileName;
+            try {
+              // Fetch the existing profile with encrypted secrets
+              const existingProfile = await ProfilesService.getProfile(
+                profileToFetch,
+                "encrypted",
+              );
+              // Preserve the encrypted API key if it exists
+              const existingApiKey = existingProfile.config?.api_key;
+              if (
+                existingApiKey &&
+                typeof existingApiKey === "string" &&
+                existingApiKey.trim()
+              ) {
+                llmConfig.api_key = existingApiKey;
+              }
+            } catch {
+              // If we can't fetch the existing profile, proceed without the API key
+              // This is a best-effort preservation
+            }
+          } else if (hasNewApiKey) {
+            llmConfig.api_key = apiKeyValue;
+          }
+
+          // Save the profile config (to existing name or renamed profile)
+          // include_secrets should be true when we have any api_key to save
           await saveProfile.mutateAsync({
-            name,
+            name: targetName,
             request: {
-              llm: {
-                model: modelValue,
-                api_key: apiKeyValue || null,
-                base_url: baseUrlValue || null,
-              },
-              include_secrets: true,
+              llm: llmConfig,
+              include_secrets: Boolean(llmConfig.api_key),
             },
           });
-          displaySuccessToast(t(I18nKey.SETTINGS$PROFILE_SAVED, { name }));
+          displaySuccessToast(
+            t(I18nKey.SETTINGS$PROFILE_SAVED, { name: targetName }),
+          );
         } catch {
           displayErrorToast(t(I18nKey.ERROR$GENERIC));
         }
@@ -345,26 +407,30 @@ export function LlmSettingsScreen({
 
       // Reset state and return to list view
       setProfileName("");
+      setOriginalProfileName(null);
       setEditMode("none");
     },
-    [profileName, saveProfile, t],
+    [editMode, originalProfileName, profileName, renameProfile, saveProfile, t],
   );
 
   // Handler for "Add Profile" button
   const handleAddProfile = React.useCallback(() => {
     setProfileName("");
+    setOriginalProfileName(null);
     setEditMode("add");
   }, []);
 
   // Handler for "Edit Profile" menu action
   const handleEditProfile = React.useCallback((profile: LlmProfileSummary) => {
     setProfileName(profile.name);
+    setOriginalProfileName(profile.name);
     setEditMode("edit");
   }, []);
 
   // Handler for cancel button in form
   const handleCancel = React.useCallback(() => {
     setProfileName("");
+    setOriginalProfileName(null);
     setEditMode("none");
   }, []);
 
