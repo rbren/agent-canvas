@@ -352,11 +352,20 @@ export function LlmSettingsScreen({
     setEditMode("edit");
   }, []);
 
+  // Handler for editing current settings (not a saved profile)
+  const handleEditCurrentSettings = React.useCallback(() => {
+    setProfileName("");
+    setEditMode("edit");
+  }, []);
+
   // Handler for cancel button in form
   const handleCancel = React.useCallback(() => {
     setProfileName("");
     setEditMode("none");
   }, []);
+
+  // Check if API key is set
+  const hasApiKey = settings?.llm_api_key_set ?? false;
 
   // If we're in form mode, show the settings form
   if (editMode !== "none") {
@@ -400,8 +409,10 @@ export function LlmSettingsScreen({
       <LlmProfilesListView
         profiles={profilesData?.profiles ?? []}
         currentModel={currentModel}
+        hasApiKey={hasApiKey}
         onAddProfile={handleAddProfile}
         onEditProfile={handleEditProfile}
+        onEditCurrentSettings={handleEditCurrentSettings}
       />
     </div>
   );

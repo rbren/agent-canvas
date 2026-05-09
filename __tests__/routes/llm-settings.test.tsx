@@ -110,8 +110,8 @@ describe("LlmSettingsScreen", () => {
     );
     vi.spyOn(ProfilesService, "listProfiles").mockResolvedValue({
       profiles: [
-        { name: "my_profile", model: "openai/gpt-4o", has_api_key: true },
-        { name: "other_profile", model: "anthropic/claude-3", has_api_key: true },
+        { name: "my_profile", model: "openai/gpt-4o", base_url: null, api_key_set: true },
+        { name: "other_profile", model: "anthropic/claude-3", base_url: null, api_key_set: true },
       ],
     });
 

@@ -8,6 +8,7 @@ import { I18nKey } from "#/i18n/declaration";
 import { LoadingSpinner } from "#/components/shared/loading-spinner";
 import { useLlmProfiles } from "#/hooks/query/use-llm-profiles";
 import { ProfileListRow } from "./profile-list-row";
+import { CurrentSettingsRow } from "./current-settings-row";
 import { useSaveSettings } from "#/hooks/mutation/use-save-settings";
 import ProfilesService from "#/api/profiles-service/profiles-service.api";
 import {
@@ -18,15 +19,19 @@ import {
 interface LlmProfilesListViewProps {
   profiles: LlmProfileSummary[];
   currentModel: string;
+  hasApiKey: boolean;
   onAddProfile: () => void;
   onEditProfile: (profile: LlmProfileSummary) => void;
+  onEditCurrentSettings: () => void;
 }
 
 export function LlmProfilesListView({
   profiles,
   currentModel,
+  hasApiKey,
   onAddProfile,
   onEditProfile,
+  onEditCurrentSettings,
 }: LlmProfilesListViewProps) {
   const { t } = useTranslation("openhands");
   const { isLoading, error, refetch } = useLlmProfiles();
@@ -68,24 +73,31 @@ export function LlmProfilesListView({
     onEditProfile(profile);
   };
 
+  // Check if current settings should be shown (has a model configured)
+  const hasCurrentSettings = Boolean(currentModel);
+
+  // Header with Add button
+  const renderHeader = () => (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="text-base font-semibold text-white">
+        {t(I18nKey.SETTINGS$AVAILABLE_PROFILES)}
+      </h2>
+      <BrandButton
+        testId="add-llm-profile"
+        type="button"
+        variant="primary"
+        onClick={onAddProfile}
+      >
+        {t(I18nKey.SETTINGS$ADD_LLM_PROFILE)}
+      </BrandButton>
+    </div>
+  );
+
   // Render loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-white">
-            {t(I18nKey.SETTINGS$AVAILABLE_PROFILES)}
-          </h2>
-          <BrandButton
-            testId="add-llm-profile"
-            type="button"
-            variant="primary"
-            className="ml-auto"
-            onClick={onAddProfile}
-          >
-            {t(I18nKey.SETTINGS$ADD_LLM_PROFILE)}
-          </BrandButton>
-        </div>
+      <div className="flex flex-col gap-6">
+        {renderHeader()}
         <div className="flex justify-center p-4">
           <LoadingSpinner size="large" />
         </div>
@@ -96,21 +108,8 @@ export function LlmProfilesListView({
   // Render error state
   if (error) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-white">
-            {t(I18nKey.SETTINGS$AVAILABLE_PROFILES)}
-          </h2>
-          <BrandButton
-            testId="add-llm-profile"
-            type="button"
-            variant="primary"
-            className="ml-auto"
-            onClick={onAddProfile}
-          >
-            {t(I18nKey.SETTINGS$ADD_LLM_PROFILE)}
-          </BrandButton>
-        </div>
+      <div className="flex flex-col gap-6">
+        {renderHeader()}
         <p className="text-sm text-red-400">
           {t(I18nKey.SETTINGS$PROFILES_LOAD_ERROR)}
         </p>
@@ -118,30 +117,30 @@ export function LlmProfilesListView({
     );
   }
 
+  // Check if there are any profiles OR current settings to display
+  const hasAnyContent = profiles.length > 0 || hasCurrentSettings;
+
   return (
     <>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-white">
-            {t(I18nKey.SETTINGS$AVAILABLE_PROFILES)}
-          </h2>
-          <BrandButton
-            testId="add-llm-profile"
-            type="button"
-            variant="primary"
-            className="ml-auto"
-            onClick={onAddProfile}
-          >
-            {t(I18nKey.SETTINGS$ADD_LLM_PROFILE)}
-          </BrandButton>
-        </div>
+      <div className="flex flex-col gap-6">
+        {renderHeader()}
 
-        {profiles.length === 0 ? (
+        {!hasAnyContent ? (
           <p className="text-sm text-gray-400 italic">
             {t(I18nKey.SETTINGS$PROFILES_EMPTY)}
           </p>
         ) : (
           <div className="border border-tertiary rounded-md divide-y divide-tertiary">
+            {/* Current settings row - always shown first if configured */}
+            {hasCurrentSettings && (
+              <CurrentSettingsRow
+                model={currentModel}
+                hasApiKey={hasApiKey}
+                onEdit={onEditCurrentSettings}
+              />
+            )}
+
+            {/* Saved profiles */}
             {profiles.map((profile) => (
               <ProfileListRow
                 key={profile.name}
