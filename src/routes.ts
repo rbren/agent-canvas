@@ -12,7 +12,6 @@ export default [
     route("conversations/:conversationId", "routes/conversation.tsx"),
     route("launch", "routes/launch.tsx"),
     route("skills", "routes/skills-settings.tsx"),
-    route("integrations", "routes/git-settings.tsx"),
     route("settings", "routes/settings.tsx", [
       index("routes/llm-settings.tsx"),
       route("condenser", "routes/condenser-settings.tsx"),

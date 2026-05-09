@@ -114,12 +114,6 @@ export function Sidebar() {
             testId="sidebar-skills-link"
             disabled={linkDisabled}
           />
-          <SidebarNavLink
-            to="/integrations"
-            label={t(I18nKey.SIDEBAR$INTEGRATIONS)}
-            testId="sidebar-integrations-link"
-            disabled={linkDisabled}
-          />
           <div className="hidden md:flex flex-col gap-0.5">
             <button
               type="button"

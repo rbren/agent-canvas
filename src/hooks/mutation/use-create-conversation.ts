@@ -88,7 +88,12 @@ export const useCreateConversation = () => {
       // rendered while a background refetch picks up the new conversation.
       // `removeQueries` would wipe the cache and force the panel back to its
       // initial loading state, dropping loaded pages and scroll position.
-      queryClient.invalidateQueries({
+      //
+      // We `await` the invalidation so the sidebar's conversation list has
+      // already refetched by the time the user-provided `onSuccess` runs and
+      // navigates into the new conversation — otherwise the new entry only
+      // showed up on the next 10s poll cycle.
+      await queryClient.invalidateQueries({
         queryKey: ["user", "conversations"],
       });
     },
