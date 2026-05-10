@@ -1,16 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import ProfilesService from "#/api/profiles-service/profiles-service.api";
-import { openHands } from "#/api/open-hands-axios";
 
-vi.mock("#/api/open-hands-axios", () => ({
-  openHands: {
-    get: vi.fn(),
-    post: vi.fn(),
-    delete: vi.fn(),
-  },
+// Mock the ProfilesClient from the SDK via the typescript-client adapter
+const mockListProfiles = vi.fn();
+const mockGetProfile = vi.fn();
+const mockSaveProfile = vi.fn();
+const mockDeleteProfile = vi.fn();
+const mockRenameProfile = vi.fn();
+const mockActivateProfile = vi.fn();
+const mockClose = vi.fn();
+
+vi.mock("#/api/typescript-client", () => ({
+  createProfilesClient: vi.fn(() => ({
+    listProfiles: mockListProfiles,
+    getProfile: mockGetProfile,
+    saveProfile: mockSaveProfile,
+    deleteProfile: mockDeleteProfile,
+    renameProfile: mockRenameProfile,
+    activateProfile: mockActivateProfile,
+    close: mockClose,
+  })),
 }));
-
-const mockedOpenHands = vi.mocked(openHands);
 
 describe("ProfilesService", () => {
   beforeEach(() => {
@@ -22,7 +32,7 @@ describe("ProfilesService", () => {
   });
 
   describe("listProfiles", () => {
-    it("fetches and returns profiles list", async () => {
+    it("calls listProfiles and returns profiles list", async () => {
       const mockResponse = {
         profiles: [
           {
@@ -41,74 +51,73 @@ describe("ProfilesService", () => {
         active_profile: null,
       };
 
-      mockedOpenHands.get.mockResolvedValue({ data: mockResponse });
+      mockListProfiles.mockResolvedValue(mockResponse);
 
       const result = await ProfilesService.listProfiles();
 
-      expect(mockedOpenHands.get).toHaveBeenCalledWith("/api/profiles");
+      expect(mockListProfiles).toHaveBeenCalled();
+      expect(mockClose).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
       expect(result.profiles).toHaveLength(2);
     });
 
     it("returns empty profiles array when no profiles exist", async () => {
       const mockResponse = { profiles: [], active_profile: null };
-      mockedOpenHands.get.mockResolvedValue({ data: mockResponse });
+      mockListProfiles.mockResolvedValue(mockResponse);
 
       const result = await ProfilesService.listProfiles();
 
       expect(result.profiles).toEqual([]);
     });
 
-    it("propagates fetch errors", async () => {
-      mockedOpenHands.get.mockRejectedValue(new Error("Network error"));
+    it("closes client even on error", async () => {
+      mockListProfiles.mockRejectedValue(new Error("Network error"));
 
       await expect(ProfilesService.listProfiles()).rejects.toThrow(
         "Network error",
       );
+      expect(mockClose).toHaveBeenCalled();
     });
   });
 
   describe("getProfile", () => {
-    it("fetches a profile by encoded name", async () => {
+    it("calls getProfile with profile name", async () => {
       const mockResponse = {
-        name: "my profile",
+        name: "my-profile",
         config: { model: "openai/gpt-4" },
         api_key_set: true,
       };
 
-      mockedOpenHands.get.mockResolvedValue({ data: mockResponse });
+      mockGetProfile.mockResolvedValue(mockResponse);
 
-      const result = await ProfilesService.getProfile("my profile");
+      const result = await ProfilesService.getProfile("my-profile");
 
-      expect(mockedOpenHands.get).toHaveBeenCalledWith(
-        "/api/profiles/my%20profile",
-        { headers: {} },
-      );
+      expect(mockGetProfile).toHaveBeenCalledWith("my-profile", {});
+      expect(mockClose).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
     });
 
-    it("passes expose secrets header when set", async () => {
+    it("passes exposeSecrets option when set", async () => {
       const mockResponse = {
         name: "my-profile",
         config: { model: "openai/gpt-4", api_key: "encrypted_..." },
         api_key_set: true,
       };
 
-      mockedOpenHands.get.mockResolvedValue({ data: mockResponse });
+      mockGetProfile.mockResolvedValue(mockResponse);
 
       await ProfilesService.getProfile("my-profile", "encrypted");
 
-      expect(mockedOpenHands.get).toHaveBeenCalledWith(
-        "/api/profiles/my-profile",
-        { headers: { "X-Expose-Secrets": "encrypted" } },
-      );
+      expect(mockGetProfile).toHaveBeenCalledWith("my-profile", {
+        exposeSecrets: "encrypted",
+      });
     });
   });
 
   describe("saveProfile", () => {
-    it("posts profile save request to encoded profile path", async () => {
+    it("calls saveProfile with name and request body", async () => {
       const mockResponse = { name: "new-profile", message: "Profile saved" };
-      mockedOpenHands.post.mockResolvedValue({ data: mockResponse });
+      mockSaveProfile.mockResolvedValue(mockResponse);
 
       const request = {
         llm: {
@@ -118,18 +127,16 @@ describe("ProfilesService", () => {
         include_secrets: true,
       };
 
-      const result = await ProfilesService.saveProfile("new profile", request);
+      const result = await ProfilesService.saveProfile("new-profile", request);
 
-      expect(mockedOpenHands.post).toHaveBeenCalledWith(
-        "/api/profiles/new%20profile",
-        request,
-      );
+      expect(mockSaveProfile).toHaveBeenCalledWith("new-profile", request);
+      expect(mockClose).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
     });
 
     it("saves profile with base_url", async () => {
       const mockResponse = { name: "custom-profile", message: "Profile saved" };
-      mockedOpenHands.post.mockResolvedValue({ data: mockResponse });
+      mockSaveProfile.mockResolvedValue(mockResponse);
 
       const request = {
         llm: {
@@ -140,63 +147,55 @@ describe("ProfilesService", () => {
 
       await ProfilesService.saveProfile("custom-profile", request);
 
-      expect(mockedOpenHands.post).toHaveBeenCalledWith(
-        "/api/profiles/custom-profile",
-        request,
-      );
+      expect(mockSaveProfile).toHaveBeenCalledWith("custom-profile", request);
     });
   });
 
   describe("deleteProfile", () => {
-    it("deletes a profile by encoded name", async () => {
+    it("calls deleteProfile with profile name", async () => {
       const mockResponse = { name: "old-profile", message: "Profile deleted" };
-      mockedOpenHands.delete.mockResolvedValue({ data: mockResponse });
+      mockDeleteProfile.mockResolvedValue(mockResponse);
 
-      const result = await ProfilesService.deleteProfile("old profile");
+      const result = await ProfilesService.deleteProfile("old-profile");
 
-      expect(mockedOpenHands.delete).toHaveBeenCalledWith(
-        "/api/profiles/old%20profile",
-      );
+      expect(mockDeleteProfile).toHaveBeenCalledWith("old-profile");
+      expect(mockClose).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
     });
   });
 
   describe("renameProfile", () => {
-    it("posts rename request with new_name", async () => {
+    it("calls renameProfile with old and new names", async () => {
       const mockResponse = {
         name: "renamed-profile",
         message: "Profile renamed",
       };
-      mockedOpenHands.post.mockResolvedValue({ data: mockResponse });
+      mockRenameProfile.mockResolvedValue(mockResponse);
 
       const result = await ProfilesService.renameProfile(
-        "old name",
+        "old-name",
         "renamed-profile",
       );
 
-      expect(mockedOpenHands.post).toHaveBeenCalledWith(
-        "/api/profiles/old%20name/rename",
-        { new_name: "renamed-profile" },
-      );
+      expect(mockRenameProfile).toHaveBeenCalledWith("old-name", "renamed-profile");
+      expect(mockClose).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
     });
   });
 
   describe("activateProfile", () => {
-    it("posts to activate endpoint with encoded profile name", async () => {
+    it("calls activateProfile with profile name", async () => {
       const mockResponse = {
         name: "active-profile",
         message: "Profile activated",
         llm_applied: true,
       };
-      mockedOpenHands.post.mockResolvedValue({ data: mockResponse });
+      mockActivateProfile.mockResolvedValue(mockResponse);
 
-      const result = await ProfilesService.activateProfile("active profile");
+      const result = await ProfilesService.activateProfile("active-profile");
 
-      expect(mockedOpenHands.post).toHaveBeenCalledWith(
-        "/api/profiles/active%20profile/activate",
-        {},
-      );
+      expect(mockActivateProfile).toHaveBeenCalledWith("active-profile");
+      expect(mockClose).toHaveBeenCalled();
       expect(result).toEqual(mockResponse);
     });
   });
