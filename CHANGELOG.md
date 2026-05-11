@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.6.0] - 2025-05-11
+## [1.0.0-alpha.1] - 2025-05-11
 
 ### Added
 
 - Initial npm package release of `@openhands/agent-canvas`
+- CLI entry point (`npx @openhands/agent-canvas`) to run full stack with Docker
 - Library build mode with component barrel exports
 - Subpath exports for modular imports:
   - `@openhands/agent-canvas/browser`
@@ -24,5 +25,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript type declarations
 - GitHub Actions workflow for automated npm publishing
 
-[Unreleased]: https://github.com/OpenHands/agent-canvas/compare/v1.6.0...HEAD
-[1.6.0]: https://github.com/OpenHands/agent-canvas/releases/tag/v1.6.0
+[Unreleased]: https://github.com/OpenHands/agent-canvas/compare/v1.0.0-alpha.1...HEAD
+[1.0.0-alpha.1]: https://github.com/OpenHands/agent-canvas/releases/tag/v1.0.0-alpha.1
