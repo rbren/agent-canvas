@@ -22,7 +22,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js for npm trusted publishing
         uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
@@ -41,7 +41,9 @@ jobs:
       - name: Verify package contents
         run: npm pack --dry-run
 
-      - name: Publish to npm
+      # Publish using npm's trusted publishing (OIDC-based provenance)
+      # This requires configuring the package on npmjs.com to trust this repository.
+      # Go to npmjs.com > Package Settings > Publishing access > Add trusted publisher
+      # and link this GitHub repository and workflow.
+      - name: Publish to npm with provenance
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
