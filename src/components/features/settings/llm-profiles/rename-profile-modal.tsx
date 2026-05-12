@@ -60,6 +60,13 @@ export function RenameProfileModal({
     }
   };
 
+  // Handle close only if not pending to prevent inconsistent state
+  const handleClose = () => {
+    if (!renameProfile.isPending) {
+      onClose();
+    }
+  };
+
   const footer = (
     <>
       <BrandButton
@@ -80,7 +87,7 @@ export function RenameProfileModal({
         type="button"
         variant="secondary"
         className="grow"
-        onClick={onClose}
+        onClick={handleClose}
         isDisabled={renameProfile.isPending}
       >
         {t(I18nKey.BUTTON$CANCEL)}
@@ -93,7 +100,7 @@ export function RenameProfileModal({
       isOpen
       title={t(I18nKey.SETTINGS$PROFILE_RENAME_TITLE)}
       footer={footer}
-      onClose={onClose}
+      onClose={handleClose}
       initialFocusRef={inputRef}
     >
       <div data-testid="rename-profile-modal" className="flex flex-col gap-3">
