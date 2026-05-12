@@ -215,4 +215,44 @@ describe("RenameProfileModal", () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByTestId("rename-profile-modal")).toBeInTheDocument();
   });
+
+  it("submits form when Enter key is pressed with valid name", async () => {
+    const user = userEvent.setup();
+    const handleClose = vi.fn();
+    vi.mocked(ProfilesService.renameProfile).mockResolvedValue({
+      name: "new-name",
+      message: "Profile renamed",
+    });
+
+    renderModal(mockProfile, handleClose);
+
+    const input = screen.getByTestId("rename-profile-input");
+    await user.clear(input);
+    await user.type(input, "new-name{Enter}");
+
+    await waitFor(() => {
+      expect(ProfilesService.renameProfile).toHaveBeenCalledWith(
+        "old-profile-name",
+        "new-name",
+      );
+    });
+
+    expect(handleClose).toHaveBeenCalled();
+  });
+
+  it("does not submit form when Enter key is pressed with invalid name", async () => {
+    const user = userEvent.setup();
+    const handleClose = vi.fn();
+
+    renderModal(mockProfile, handleClose);
+
+    const input = screen.getByTestId("rename-profile-input");
+    await user.clear(input);
+    await user.type(input, ".invalid{Enter}");
+
+    // Should not call rename or close
+    expect(ProfilesService.renameProfile).not.toHaveBeenCalled();
+    expect(handleClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId("rename-profile-modal")).toBeInTheDocument();
+  });
 });

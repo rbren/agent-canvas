@@ -15,6 +15,7 @@ interface SettingsInputProps {
   startContent?: React.ReactNode;
   className?: string;
   onChange?: (value: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   required?: boolean;
   min?: number;
   max?: number;
@@ -44,6 +45,7 @@ export const SettingsInput = forwardRef<HTMLInputElement, SettingsInputProps>(
       startContent,
       className,
       onChange,
+      onKeyDown,
       required,
       min,
       max,
@@ -67,6 +69,7 @@ export const SettingsInput = forwardRef<HTMLInputElement, SettingsInputProps>(
           ref={ref}
           data-testid={testId}
           onChange={(e) => onChange?.(e.target.value)}
+          onKeyDown={onKeyDown}
           name={name}
           disabled={isDisabled}
           type={type}

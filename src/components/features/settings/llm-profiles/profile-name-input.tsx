@@ -9,6 +9,7 @@ interface ProfileNameInputProps {
   ruleTestId?: string;
   value: string;
   onChange: (value: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   isDisabled?: boolean;
   /** Render label as "Name (Optional)" when this field isn't required. */
@@ -26,6 +27,7 @@ export const ProfileNameInput = forwardRef<
     ruleTestId,
     value,
     onChange,
+    onKeyDown,
     placeholder,
     isDisabled,
     isOptional,
@@ -60,6 +62,7 @@ export const ProfileNameInput = forwardRef<
           placeholder ?? t(I18nKey.SETTINGS$PROFILE_NAME_PLACEHOLDER)
         }
         onChange={onChange}
+        onKeyDown={onKeyDown}
         isDisabled={isDisabled}
         ariaDescribedBy={describedById}
         ariaInvalid={!isValid}

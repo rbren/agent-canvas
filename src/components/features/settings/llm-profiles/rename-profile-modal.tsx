@@ -111,6 +111,11 @@ export function RenameProfileModal({
           value={newName}
           onChange={setNewName}
           isRequired
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !renameProfile.isPending && isValid) {
+              handleSubmit();
+            }
+          }}
         />
       </div>
     </ApiKeyModalBase>
