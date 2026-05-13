@@ -82,13 +82,28 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [selectedAgentId, setSelectedAgentId] =
     React.useState<OnboardingAgentId>("openhands");
 
+  // The LLM-setup step (index 2) is OpenHands-specific: ACP agents drive
+  // their own LLM via the subprocess and authenticate through the Secrets
+  // panel, so there's nothing to configure in that form for them. Skip
+  // over it in both directions when the user has picked an ACP agent,
+  // keeping the rest of the flow intact (back from SayHello on the ACP
+  // path returns to ChooseAgent, not to a dead-end LLM page).
+  const skipLlmStep = selectedAgentId !== "openhands";
   const goNext = React.useCallback(
-    () => setCurrentStep((step) => (step >= TOTAL_STEPS - 1 ? step : step + 1)),
-    [],
+    () =>
+      setCurrentStep((step) => {
+        const delta = skipLlmStep && step === 1 ? 2 : 1;
+        return Math.min(step + delta, TOTAL_STEPS - 1);
+      }),
+    [skipLlmStep],
   );
   const goBack = React.useCallback(
-    () => setCurrentStep((step) => (step <= 0 ? 0 : step - 1)),
-    [],
+    () =>
+      setCurrentStep((step) => {
+        const delta = skipLlmStep && step === 3 ? 2 : 1;
+        return Math.max(step - delta, 0);
+      }),
+    [skipLlmStep],
   );
 
   return (

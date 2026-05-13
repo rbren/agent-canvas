@@ -1,17 +1,28 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Sparkles } from "lucide-react";
+import { AxiosError } from "axios";
+import { Check } from "lucide-react";
 import { BrandButton } from "#/components/features/settings/brand-button";
 import { I18nKey } from "#/i18n/declaration";
 import { cn } from "#/utils/utils";
+import { useSaveSettings } from "#/hooks/mutation/use-save-settings";
+import { ACP_PROVIDERS } from "#/constants/acp-providers";
+import {
+  displayErrorToast,
+  displaySuccessToast,
+} from "#/utils/custom-toast-handlers";
+import { retrieveAxiosErrorMessage } from "#/utils/retrieve-axios-error-message";
 
-export type OnboardingAgentId = "openhands" | "claude-code" | "codex";
+export type OnboardingAgentId =
+  | "openhands"
+  | "claude-code"
+  | "codex"
+  | "gemini-cli";
 
 interface AgentOption {
   id: OnboardingAgentId;
   label: string;
   descriptionKey: I18nKey;
-  enabled: boolean;
 }
 
 const AGENT_OPTIONS: AgentOption[] = [
@@ -19,21 +30,52 @@ const AGENT_OPTIONS: AgentOption[] = [
     id: "openhands",
     label: "OpenHands",
     descriptionKey: I18nKey.ONBOARDING$AGENT_OPENHANDS_DESCRIPTION,
-    enabled: true,
   },
   {
     id: "claude-code",
     label: "Claude Code",
     descriptionKey: I18nKey.ONBOARDING$AGENT_CLAUDE_CODE_DESCRIPTION,
-    enabled: false,
   },
   {
     id: "codex",
     label: "Codex",
     descriptionKey: I18nKey.ONBOARDING$AGENT_CODEX_DESCRIPTION,
-    enabled: false,
+  },
+  {
+    id: "gemini-cli",
+    label: "Gemini CLI",
+    descriptionKey: I18nKey.ONBOARDING$AGENT_GEMINI_CLI_DESCRIPTION,
   },
 ];
+
+/**
+ * Resolve the ``agent_settings_diff`` payload for an onboarding selection.
+ *
+ * - ``openhands`` is the default and only needs ``agent_kind`` (the existing
+ *   LLM-shaped fields stay put).
+ * - The ACP options use ``ACP_PROVIDERS`` for the provider key + default
+ *   command, matching what the Settings → Agent page emits. ``acp_command``
+ *   is intentionally ``[]`` on the default-command path: the backend
+ *   resolves the actual command from its own registry, so we don't pin a
+ *   stale command here if the SDK registry changes upstream.
+ */
+function buildAgentSettingsDiff(
+  agentId: OnboardingAgentId,
+): Record<string, unknown> | null {
+  if (agentId === "openhands") {
+    return { agent_kind: "openhands" };
+  }
+  const provider = ACP_PROVIDERS.find(({ key }) => key === agentId);
+  if (!provider) {
+    return null;
+  }
+  return {
+    agent_kind: "acp",
+    acp_server: provider.key,
+    acp_command: [],
+    acp_model: null,
+  };
+}
 
 interface ChooseAgentStepProps {
   selectedAgentId: OnboardingAgentId;
@@ -47,6 +89,32 @@ export function ChooseAgentStep({
   onNext,
 }: ChooseAgentStepProps) {
   const { t } = useTranslation("openhands");
+  const { mutate: saveSettings, isPending: isSaving } = useSaveSettings();
+
+  const handleNext = () => {
+    const diff = buildAgentSettingsDiff(selectedAgentId);
+    if (!diff) {
+      // Unknown id (shouldn't be reachable through the UI). Advance
+      // without writing — better to show the next step than block the
+      // user behind a silent no-op.
+      onNext();
+      return;
+    }
+
+    saveSettings(
+      { agent_settings_diff: diff },
+      {
+        onError: (error) => {
+          const message = retrieveAxiosErrorMessage(error as AxiosError);
+          displayErrorToast(message || t(I18nKey.ERROR$GENERIC));
+        },
+        onSuccess: () => {
+          displaySuccessToast(t(I18nKey.SETTINGS$SAVED));
+          onNext();
+        },
+      },
+    );
+  };
 
   return (
     <div
@@ -63,19 +131,6 @@ export function ChooseAgentStep({
       </header>
 
       <div
-        role="note"
-        data-testid="onboarding-agent-coming-soon"
-        className={cn(
-          "flex items-start gap-3 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3",
-        )}
-      >
-        <Sparkles className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-        <p className="text-sm font-medium text-primary">
-          {t(I18nKey.ONBOARDING$AGENT_COMING_SOON)}
-        </p>
-      </div>
-
-      <div
         role="radiogroup"
         aria-label={t(I18nKey.ONBOARDING$AGENT_TITLE)}
         className="flex flex-col gap-3"
@@ -88,16 +143,12 @@ export function ChooseAgentStep({
               type="button"
               role="radio"
               aria-checked={isSelected}
-              aria-disabled={!option.enabled}
-              disabled={!option.enabled}
               data-testid={`onboarding-agent-option-${option.id}`}
               data-selected={isSelected}
-              onClick={() => option.enabled && onSelect(option.id)}
+              onClick={() => onSelect(option.id)}
               className={cn(
                 "flex items-start justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-colors",
-                option.enabled
-                  ? "cursor-pointer hover:border-primary/60 hover:bg-white/5"
-                  : "cursor-not-allowed opacity-50",
+                "cursor-pointer hover:border-primary/60 hover:bg-white/5",
                 isSelected
                   ? "border-primary bg-primary/10"
                   : "border-white/10 bg-base-secondary",
@@ -129,9 +180,10 @@ export function ChooseAgentStep({
           testId="onboarding-agent-next"
           type="button"
           variant="primary"
-          onClick={onNext}
+          isDisabled={isSaving}
+          onClick={handleNext}
         >
-          {t(I18nKey.ONBOARDING$NEXT)}
+          {isSaving ? t(I18nKey.SETTINGS$SAVING) : t(I18nKey.ONBOARDING$NEXT)}
         </BrandButton>
       </div>
     </div>

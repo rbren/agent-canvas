@@ -24768,22 +24768,22 @@
     "tr": "OpenAI'nin Codex aracı.",
     "uk": "Агент Codex від OpenAI."
   },
-  "ONBOARDING$AGENT_COMING_SOON": {
-    "en": "Support for other agents coming soon!",
-    "ja": "他のエージェントのサポートは近日公開予定です！",
-    "zh-CN": "更多智能体支持即将上线！",
-    "zh-TW": "更多代理支援即將推出！",
-    "ko-KR": "다른 에이전트 지원이 곧 추가됩니다!",
-    "no": "Støtte for andre agenter kommer snart!",
-    "ar": "دعم وكلاء آخرين قريبًا!",
-    "de": "Unterstützung für weitere Agenten folgt in Kürze!",
-    "fr": "Prise en charge d'autres agents bientôt disponible !",
-    "it": "Supporto per altri agenti in arrivo!",
-    "pt": "Suporte a outros agentes em breve!",
-    "es": "¡Pronto se admitirán más agentes!",
-    "ca": "Aviat hi haurà compatibilitat amb més agents!",
-    "tr": "Diğer araçlar için destek yakında geliyor!",
-    "uk": "Підтримка інших агентів незабаром!"
+  "ONBOARDING$AGENT_GEMINI_CLI_DESCRIPTION": {
+    "en": "Google's Gemini CLI agent.",
+    "ja": "Google's Gemini CLI agent.",
+    "zh-CN": "Google's Gemini CLI agent.",
+    "zh-TW": "Google's Gemini CLI agent.",
+    "ko-KR": "Google's Gemini CLI agent.",
+    "no": "Google's Gemini CLI agent.",
+    "ar": "Google's Gemini CLI agent.",
+    "de": "Google's Gemini CLI agent.",
+    "fr": "Google's Gemini CLI agent.",
+    "it": "Google's Gemini CLI agent.",
+    "pt": "Google's Gemini CLI agent.",
+    "es": "Google's Gemini CLI agent.",
+    "ca": "Google's Gemini CLI agent.",
+    "tr": "Google's Gemini CLI agent.",
+    "uk": "Google's Gemini CLI agent."
   },
   "ONBOARDING$BACKEND_TITLE": {
     "en": "Check your backend",
