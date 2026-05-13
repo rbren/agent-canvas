@@ -14,7 +14,10 @@ import {
   displaySuccessToast,
 } from "#/utils/custom-toast-handlers";
 import { I18nKey } from "#/i18n/declaration";
-import { deriveProfileNameFromModel } from "#/utils/derive-profile-name";
+import {
+  deriveProfileNameFromModel,
+  isProfileNameValid,
+} from "#/utils/derive-profile-name";
 import { SdkSectionSaveControl } from "../sdk-settings/sdk-section-page";
 import { SettingsFormValues } from "#/utils/sdk-settings-schema";
 import { ArrowLeft } from "lucide-react";
@@ -59,17 +62,15 @@ export function LlmSettingsLocalView() {
 
   // Validate profile name
   const isNameValid = useMemo(() => {
-    if (!profileName.trim()) return false;
-    // Check pattern
-    const pattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-    if (!pattern.test(profileName)) return false;
+    if (!isProfileNameValid(profileName, { isRequired: true })) return false;
+    const trimmed = profileName.trim();
     // In create mode, check for duplicates
-    if (viewMode === "create" && existingNames.has(profileName)) return false;
+    if (viewMode === "create" && existingNames.has(trimmed)) return false;
     // In edit mode, name can match current profile name
     if (
       viewMode === "edit" &&
-      profileName !== editingProfile?.profile.name &&
-      existingNames.has(profileName)
+      trimmed !== editingProfile?.profile.name &&
+      existingNames.has(trimmed)
     ) {
       return false;
     }
