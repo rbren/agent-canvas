@@ -214,7 +214,7 @@
 <div class="container">
 
 <h1>Proposal — <span>Auto-Discover Agent Conversations</span></h1>
-<p class="subtitle">Replace the hard-coded "Choose Agent" step with dynamic agent discovery from connected backends</p>
+<p class="subtitle">Select backends first, then auto-discover available agents from them</p>
 
 <div class="prereq">
   Builds on top of
@@ -273,16 +273,17 @@
   <div class="card" style="border-color: rgba(63,185,80,0.3);">
     <h3><span class="tag after">This proposal</span> agent discovery</h3>
     <div class="flow-row">
-      <div class="flow-step new-step">Step 0<br><strong>Available Agents</strong><br><span style="font-size:0.65rem;">Auto-discovered<br>from backends</span></div>
+      <div class="flow-step changed">Step 0<br><strong>Choose Backend</strong><br><span style="font-size:0.65rem;">From PR #421<br>(moved to Step 0)</span></div>
       <span class="flow-arrow">&rarr;</span>
-      <div class="flow-step changed">Step 1<br><strong>Choose Backend</strong><br><span style="font-size:0.65rem;">From PR #421<br>(unchanged)</span></div>
+      <div class="flow-step new-step">Step 1<br><strong>Available Agents</strong><br><span style="font-size:0.65rem;">Auto-discovered<br>from Step 0's backends</span></div>
       <span class="flow-arrow">&rarr;</span>
       <div class="flow-step">Step 2<br><strong>Setup LLM</strong></div>
       <span class="flow-arrow">&rarr;</span>
       <div class="flow-step">Step 3<br><strong>Say Hello</strong></div>
     </div>
     <ul style="font-size:0.78rem; margin-top:0.6rem;">
-      <li><strong>Step 0 replaced:</strong> queries each backend for agent info</li>
+      <li><strong>Steps reordered:</strong> backends first, agents second</li>
+      <li>Agent list populated from backends selected in Step 0</li>
       <li>No code change when new agent type is added</li>
       <li>Conversations tagged with agent in sidebar</li>
       <li>CLI sessions discoverable &amp; resumable</li>
@@ -291,9 +292,11 @@
 </div>
 
 <div class="callout">
-  <strong>What changes here vs. PR #421:</strong> PR #421 only touched <strong>Step 1</strong> (Check Backend &rarr; Choose Backend).
-  This proposal touches <strong>Step 0</strong> (Choose Agent &rarr; Available Agents), plus adds agent tags to the conversation
-  sidebar and session discovery. Step 1 from PR #421 stays exactly the same.
+  <strong>What changes here vs. PR #421:</strong> PR #421 introduced Choose Backend as <strong>Step 1</strong>.
+  This proposal <strong>moves it to Step 0</strong> (backends must be selected first), then replaces the old
+  static Choose Agent with a new <strong>Step 1: Available Agents</strong> — populated dynamically from
+  the backends the user just selected. It also adds agent tags to the conversation sidebar
+  and CLI session discovery.
 </div>
 
 <!-- ─── Diff table ─── -->
@@ -308,13 +311,13 @@
     <td><strong>0</strong></td>
     <td>Choose Agent — static <code>AGENT_OPTIONS[]</code></td>
     <td>Choose Agent — <em>unchanged</em></td>
-    <td style="color:var(--green);"><strong>Available Agents</strong> — dynamic, from <code>/api/agents</code></td>
+    <td style="color:var(--yellow);"><strong>Choose Backend</strong> — moved up from Step 1</td>
   </tr>
   <tr>
     <td><strong>1</strong></td>
     <td>Check Backend — verify single connection</td>
     <td style="color:var(--yellow);"><strong>Choose Backend</strong> — multi-select Local + Docker</td>
-    <td>Choose Backend — <em>unchanged from PR #421</em></td>
+    <td style="color:var(--green);"><strong>Available Agents</strong> — dynamic, from backends in Step 0</td>
   </tr>
   <tr>
     <td><strong>2</strong></td>
@@ -337,12 +340,14 @@
 </table>
 
 <!-- ================================================================== -->
-<h2><span class="num">2</span> Step 0 Mockup — Before / After</h2>
+<h2><span class="num">2</span> Step 1 Mockup — Agent Selection Before / After</h2>
+
+<p>After the user selects backends in Step 0 (Choose Backend), Step 1 shows the agents those backends offer:</p>
 
 <div class="vs">
   <div>
     <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">
-      <span class="tag before">Current</span> + <span class="tag pr421">PR #421</span> &mdash; Same static radio list
+      <span class="tag before">Current</span> + <span class="tag pr421">PR #421</span> &mdash; Static radio list (Step 0)
     </p>
     <div class="mockup" style="max-width:400px;">
       <div class="mockup-bar">
@@ -384,17 +389,17 @@
     </div>
   </div>
   <div>
-    <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;"><span class="tag after">This proposal</span> Auto-discovered from backends</p>
+    <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;"><span class="tag after">This proposal</span> Auto-discovered from backends selected in Step 0</p>
     <div class="mockup" style="max-width:400px;">
       <div class="mockup-bar">
         <span class="mockup-dot" style="background:#ff5f57;"></span>
         <span class="mockup-dot" style="background:#febc2e;"></span>
         <span class="mockup-dot" style="background:#28c840;"></span>
-        <span style="margin-left:auto;">Step 1 / 4</span>
+        <span style="margin-left:auto;">Step 2 / 4</span>
       </div>
       <div class="mockup-body" style="padding:1rem 1.3rem;">
         <h4 style="font-size:1rem;">Available agents</h4>
-        <p style="font-size:0.78rem;color:var(--text-dim);">Discovered from your connected backends.</p>
+        <p style="font-size:0.78rem;color:var(--text-dim);">Discovered from your backends (Local :18000, Docker :18002).</p>
         <div style="margin-top:0.8rem;">
           <div class="agent-card selected" style="padding:0.6rem 0.8rem;">
             <div class="agent-icon" style="background:#3b82f6; width:30px; height:30px; font-size:0.8rem;">OH</div>
@@ -434,9 +439,9 @@
 </div>
 
 <div class="callout">
-  <strong>Key difference:</strong> The agent list is no longer a build-time constant. Each connected backend is queried
-  via <code>GET /server_info</code> (already exists) plus a new <code>GET /api/agents</code> endpoint.
-  If a user adds a Docker backend running Claude Code tomorrow, it just appears in the list.
+  <strong>Key difference:</strong> The agent list is no longer a build-time constant. After the user picks their
+  backends in Step 0, each selected backend is queried via <code>GET /api/agents</code> (new endpoint).
+  If a user adds a Docker backend running Claude Code tomorrow, it automatically appears in Step 1.
 </div>
 
 <!-- ──────────────────────────────────────────────── -->
@@ -508,7 +513,7 @@
 <!-- ================================================================== -->
 <h2><span class="num">3</span> Discovery Flow</h2>
 
-<div class="arch"><span class="ye">Onboarding Step 0 loads…</span>
+<div class="arch"><span class="ye">Onboarding Step 1 loads (after user selected backends in Step 0)…</span>
 
   <span class="gr">Frontend</span>                          <span class="cy">Backend (Local :18000)</span>         <span class="cy">Backend (Docker :18002)</span>
     │                                     │                                │
@@ -671,7 +676,7 @@
     <td>
       React Query hook that polls all connected backends' <code>/api/agents</code>.<br>
       Merges results, deduplicates by agent ID, and annotates each entry with its source backend.<br>
-      Replaces the static <code>AGENT_OPTIONS</code> array in the onboarding step.
+      Replaces the static <code>AGENT_OPTIONS</code> array; queries backends selected in Step 0.
     </td>
   </tr>
   <tr>
@@ -705,7 +710,7 @@
     <li>Add optional <code>agents_url</code> to <code>/server_info</code> response</li>
     <li>Add <code>AgentDescriptor</code> type + <code>getAgents()</code> to typescript-client</li>
     <li>Create <code>useDiscoveredAgents</code> hook in agent-canvas</li>
-    <li>Replace static <code>ChooseAgentStep</code> with dynamic version</li>
+    <li>Move Choose Backend to Step 0; replace static <code>ChooseAgentStep</code> with dynamic <code>AvailableAgentsStep</code> at Step 1</li>
   </ol>
 </div>
 
@@ -745,8 +750,8 @@
 <span class="gr">│           │                               │                      │</span>
 <span class="gr">│           ▼                               ▼                      │</span>
 <span class="gr">│  ┌─────────────────┐            ┌──────────────────┐            │</span>
-<span class="gr">│  │ Choose Agent     │            │ Conversation      │            │</span>
-<span class="gr">│  │ Step (dynamic)   │            │ Sidebar (tags +   │            │</span>
+<span class="gr">│  │ Available Agents │            │ Conversation      │            │</span>
+<span class="gr">│  │ Step 1 (dynamic) │            │ Sidebar (tags +   │            │</span>
 <span class="gr">│  │                  │            │ resume prompts)   │            │</span>
 <span class="gr">│  └─────────────────┘            └──────────────────┘            │</span>
 <span class="gr">└──────────────────────┬──────────────────────┬───────────────────┘</span>
@@ -790,7 +795,7 @@
     <li><strong>SDK adds 2 types:</strong> <code>AgentDescriptor</code>, <code>AgentCapabilities</code></li>
     <li><strong>SDK extends:</strong> <code>ServerInfo</code> with optional <code>agents_url</code></li>
     <li><strong>typescript-client adds:</strong> <code>getAgents()</code>, <code>getSessions()</code>, TypeScript mirrors of new types</li>
-    <li><strong>agent-canvas adds:</strong> <code>useDiscoveredAgents</code>, <code>useDiscoverableSessions</code> hooks; dynamic agent step; conversation agent tags</li>
+    <li><strong>agent-canvas adds:</strong> <code>useDiscoveredAgents</code>, <code>useDiscoverableSessions</code> hooks; reorders onboarding (backends → agents); conversation agent tags</li>
     <li><strong>3 phases:</strong> (A) Agent discovery → (B) Session discovery → (C) Agent tags</li>
   </ul>
   <p style="margin-top:0.8rem; font-size:0.88rem;">
