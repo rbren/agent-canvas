@@ -566,6 +566,16 @@ class AgentServerConversationService {
     ]);
     return requireAppConversation(conversation, conversationId);
   }
+
+  static async switchProfile(
+    conversationId: string,
+    profileName: string,
+  ): Promise<void> {
+    await new ConversationClient(getAgentServerClientOptions()).switchProfile(
+      conversationId,
+      profileName,
+    );
+  }
 }
 
 export default AgentServerConversationService;

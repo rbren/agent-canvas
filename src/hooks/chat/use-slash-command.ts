@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useConversationSkills } from "#/hooks/query/use-conversation-skills";
 import { Skill } from "#/api/conversation-service/agent-server-conversation-service.types";
 import { Microagent } from "#/api/open-hands.types";
-import { BUILT_IN_COMMANDS } from "#/utils/constants";
+import { BUILT_IN_COMMANDS, MODEL_COMMAND } from "#/utils/constants";
 import { useActiveBackend } from "#/contexts/active-backend-context";
 
 export type SlashCommandSkill = Skill | Microagent;
@@ -41,12 +41,15 @@ export const useSlashCommand = (
   // Build slash command items from built-in commands + skills:
   // - Built-in commands (like /new) are included for V1 conversations
   // - /new is cloud-only — local backends don't surface it
+  // - /model is local-only — cloud backends don't have profiles
   // - Skills with explicit "/" triggers use those triggers
   // - AgentSkills without "/" triggers get a derived "/<name>" command
   const slashItems = useMemo(() => {
-    const items: SlashCommandItem[] = BUILT_IN_COMMANDS.filter(
-      (cmd) => isCloud || cmd.command !== "/new",
-    );
+    const items: SlashCommandItem[] = BUILT_IN_COMMANDS.filter((cmd) => {
+      if (cmd.command === "/new") return isCloud;
+      if (cmd.command === MODEL_COMMAND) return !isCloud;
+      return true;
+    });
 
     // Wait for skills to finish initial load so all commands appear together
     if (isSkillsLoading) return items;

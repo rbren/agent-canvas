@@ -8278,6 +8278,24 @@
     "uk": "Команди",
     "ca": "Comandes"
   },
+  "MODEL$AVAILABLE_PROFILES": {
+    "en": "Available profiles ({{count}})"
+  },
+  "MODEL$NO_SAVED_PROFILES": {
+    "en": "No saved profiles"
+  },
+  "MODEL$NO_PROFILES_HINT": {
+    "en": "Use the LLM settings page to create a profile, then run /model <name> to switch."
+  },
+  "MODEL$SWITCHED_TO_PROFILE": {
+    "en": "ℹ️ Switched to profile <cmd>{{name}}</cmd>"
+  },
+  "MODEL$LIST_FAILED": {
+    "en": "Failed to list LLM profiles"
+  },
+  "MODEL$SWITCH_FAILED": {
+    "en": "Failed to switch to profile '{{name}}'"
+  },
   "CHAT_INTERFACE$CONNECTING": {
     "en": "Connecting... (this may take 1-2 minutes)",
     "ja": "接続中...（1-2分かかる場合があります）",
