@@ -151,15 +151,16 @@ class EventService {
       } catch (err) {
         if (!hasFilterParams) throw err;
 
-        // Server may not support timestamp/sort filters yet — retry
-        // with limit-only so the initial history load still works.
-        const fallbackParams = new URLSearchParams();
-        fallbackParams.set("limit", String(cloudLimit));
-        const data = await doCloudSearch(fallbackParams);
-        return {
-          items: data?.items ?? [],
-          next_page_id: data?.next_page_id ?? null,
-        };
+        // Server doesn't support timestamp filters yet — stop pagination
+        // by returning an empty page so the UI doesn't retry indefinitely.
+        // A limit-only fallback would return the same most-recent events
+        // already in the store, which get deduped but keep hasMore=true.
+        console.warn(
+          "[EventService] Cloud backend doesn't support pagination filters. " +
+            "Falling back to initial load only. " +
+            "Server needs OpenHands/OpenHands#14399.",
+        );
+        return { items: [], next_page_id: null };
       }
     }
 

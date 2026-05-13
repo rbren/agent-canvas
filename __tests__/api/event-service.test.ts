@@ -72,14 +72,12 @@ describe("EventService.searchEvents — cloud branch", () => {
     );
   });
 
-  it("falls back to limit-only request when full-param request fails", async () => {
-    // First call (with filter params) fails; second call (fallback) succeeds.
-    vi.mocked(callCloudProxy)
-      .mockRejectedValueOnce(new Error("Internal Server Error"))
-      .mockResolvedValueOnce({
-        items: [{ id: "evt-1" }],
-        next_page_id: null,
-      });
+  it("returns empty page when full-param request fails (graceful degradation)", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    vi.mocked(callCloudProxy).mockRejectedValueOnce(
+      new Error("Internal Server Error"),
+    );
 
     const result = await EventService.searchEvents("conv-1", null, null, {
       limit: 50,
@@ -87,19 +85,15 @@ describe("EventService.searchEvents — cloud branch", () => {
       timestampLt: "2026-05-12T00:00:00.000000",
     });
 
-    expect(vi.mocked(callCloudProxy)).toHaveBeenCalledTimes(2);
-
-    // First call had full params
-    const firstCall = vi.mocked(callCloudProxy).mock.calls[0][0];
-    expect(firstCall.path).toContain("timestamp__lt=");
-
-    // Fallback call has only limit
-    const fallbackCall = vi.mocked(callCloudProxy).mock.calls[1][0];
-    expect(fallbackCall.path).toBe(
-      "/api/v1/conversation/conv-1/events/search?limit=50",
+    // Only one call — no retry, just returns empty page to stop pagination.
+    expect(vi.mocked(callCloudProxy)).toHaveBeenCalledTimes(1);
+    expect(result.items).toHaveLength(0);
+    expect(result.next_page_id).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("doesn't support pagination filters"),
     );
 
-    expect(result.items).toHaveLength(1);
+    warnSpy.mockRestore();
   });
 
   it("rethrows when a limit-only request (no filter params) fails", async () => {
