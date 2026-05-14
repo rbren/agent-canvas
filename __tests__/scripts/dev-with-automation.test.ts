@@ -10,6 +10,7 @@ import { describe, expect, it, afterEach } from "vitest";
 import {
   buildAutomationCommand,
   buildConfig,
+  buildViteEnv,
   DEFAULT_AUTOMATION_REPO,
   DEFAULT_AUTOMATION_PACKAGE,
   DEFAULT_AUTOMATION_VERSION,
@@ -354,6 +355,20 @@ describe("buildConfig", () => {
     });
 
     expect(config.sessionApiKey).toBe("v0-key");
+  });
+
+  it("keeps full-stack browser backend requests on the ingress origin instead of baking in loopback", async () => {
+    const config = await buildConfig({}, envWithIsolatedKeyPath());
+    const env = buildViteEnv(config);
+
+    expect(env.VITE_BACKEND_BASE_URL).toBe("");
+    expect(env.VITE_BACKEND_HOST).toBe(`127.0.0.1:${config.ingressPort}`);
+    expect(env.VITE_BACKEND_HOST).not.toBe(
+      `127.0.0.1:${config.agentServerPort}`,
+    );
+    expect(env.VITE_FRONTEND_PORT).toBe(String(config.vitePort));
+    expect(env.VITE_SESSION_API_KEY).toBe(config.sessionApiKey);
+    expect(env.VITE_AUTOMATION_API_KEY).toBe(config.localApiKey);
   });
 });
 

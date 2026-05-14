@@ -10,6 +10,7 @@ import { describe, expect, it, afterEach } from "vitest";
 import {
   buildSafeDevConfig,
   buildSafeDevConfigAsync,
+  buildFrontendDevEnv,
   buildNpmScriptCommand,
   buildAgentServerCommand,
   formatMissingUvxGuidance,
@@ -536,6 +537,22 @@ describe("buildSafeDevConfig", () => {
     expect(config.backendHost).toBe("127.0.0.1:19000");
     expect(config.stateDir).toBe(path.resolve(cwd, ".tmp", "dev-safe"));
     expect(config.workingDir).toBe("/workspace/custom-repo");
+  });
+
+  it("keeps browser backend requests same-origin while pointing Vite at the local proxy target", () => {
+    const config = buildSafeDevConfig("/workspace/project/agent-canvas", {
+      OH_SESSION_API_KEY_PATH: tempKeyPath(),
+    });
+
+    const env = buildFrontendDevEnv(config, {
+      EXISTING_ENV: "preserved",
+    });
+
+    expect((env as Record<string, string>).EXISTING_ENV).toBe("preserved");
+    expect(env.VITE_BACKEND_BASE_URL).toBe("");
+    expect(env.VITE_BACKEND_HOST).toBe("127.0.0.1:18000");
+    expect(env.VITE_BACKEND_BASE_URL).not.toBe(config.backendBaseUrl);
+    expect(env.VITE_SESSION_API_KEY).toBe(config.sessionApiKey);
   });
 
   it("falls back to the persisted session key file when no env override is set", () => {

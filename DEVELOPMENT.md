@@ -156,3 +156,9 @@ current web origin and proxy `/api`, `/server_info`, and `/sockets` server-side.
 This keeps the same launched stack reachable through `localhost`, a LAN address,
 or a Tailscale hostname. Set `VITE_BACKEND_BASE_URL` only when you intentionally
 want the browser to talk directly to a separately managed backend.
+
+Security note: the dev stack is intended for trusted local development
+environments. The agent server and automation backend bind to loopback and sit
+behind the dev proxy, but anyone who can reach the served UI can drive that local
+stack through the browser. Only expose the dev port on trusted networks, such as
+your own Tailscale tailnet, or keep it behind a local firewall or tunnel.

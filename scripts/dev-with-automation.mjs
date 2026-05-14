@@ -564,6 +564,23 @@ function startIngress(config) {
   );
 }
 
+export function buildViteEnv(config) {
+  return {
+    // Point Vite's server-side proxy at the ingress while keeping
+    // browser-side API calls on the current page origin. This lets the
+    // same dev stack work through localhost, LAN IPs, and Tailscale names.
+    VITE_BACKEND_HOST: `127.0.0.1:${config.ingressPort}`,
+    VITE_BACKEND_BASE_URL: "",
+    VITE_WORKING_DIR:
+      config.viteWorkingDir ?? join(config.stateDir, "workspaces"),
+    VITE_FRONTEND_PORT: config.vitePort.toString(),
+    // Session API key for frontend to authenticate with agent-server
+    VITE_SESSION_API_KEY: config.sessionApiKey,
+    // Automation API key for frontend to authenticate with automation backend
+    VITE_AUTOMATION_API_KEY: config.localApiKey,
+  };
+}
+
 function startVite(config) {
   logService("vite", `Starting on port ${config.vitePort}...`, c.magenta);
 
@@ -571,21 +588,7 @@ function startVite(config) {
 
   spawnService("vite", frontendCommand.command, frontendCommand.args, {
     cwd: config.canvasPath,
-    env: {
-      // Point Vite's server-side proxy at the ingress while keeping
-      // browser-side API calls on the current page origin. This lets the
-      // same dev stack work through localhost, LAN IPs, and Tailscale names.
-      VITE_BACKEND_HOST: `127.0.0.1:${config.ingressPort}`,
-      VITE_BACKEND_BASE_URL: "",
-      VITE_WORKING_DIR: config.viteWorkingDir ?? join(config.stateDir, "workspaces"),
-      VITE_FRONTEND_PORT: config.vitePort.toString(),
-      // Session API key for frontend to authenticate with agent-server
-      VITE_SESSION_API_KEY: config.sessionApiKey,
-      // Automation API key for frontend to authenticate with automation backend
-      VITE_AUTOMATION_API_KEY: config.localApiKey,
-      // Session API key for agent-server auth (when SESSION_API_KEY is set)
-      ...(config.sessionApiKey && { VITE_SESSION_API_KEY: config.sessionApiKey }),
-    },
+    env: buildViteEnv(config),
     color: c.magenta,
   });
 }

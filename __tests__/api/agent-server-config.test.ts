@@ -42,11 +42,20 @@ describe("agent server config", () => {
 
   it("falls back to the browser origin when the dev launcher clears the direct backend URL", () => {
     vi.stubEnv("VITE_BACKEND_BASE_URL", "");
-    mockWindowLocation("https://spark-1874.tailae62af.ts.net/conversations");
+    mockWindowLocation(
+      "http://spark-1874.tailae62af.ts.net:8000/conversations",
+    );
 
     expect(getAgentServerBaseUrl()).toBe(
-      "https://spark-1874.tailae62af.ts.net",
+      "http://spark-1874.tailae62af.ts.net:8000",
     );
+  });
+
+  it("preserves a configured loopback env URL for explicit direct-browser backend access", () => {
+    vi.stubEnv("VITE_BACKEND_BASE_URL", "http://127.0.0.1:8000");
+    mockWindowLocation("https://preview.example.dev/conversations");
+
+    expect(getAgentServerBaseUrl()).toBe("http://127.0.0.1:8000");
   });
 
   it("preserves a non-local backend URL from stored config", () => {
