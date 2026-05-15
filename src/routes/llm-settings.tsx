@@ -22,6 +22,10 @@ import {
   type SettingsView,
 } from "#/utils/sdk-settings-schema";
 import { DEFAULT_SETTINGS } from "#/services/settings";
+import { DeviceFlowAuth } from "#/components/features/backends/device-flow-auth";
+import { BrandButton } from "#/components/features/settings/brand-button";
+import { getRegisteredBackends } from "#/api/backend-registry/active-store";
+import { PRODUCT_URL } from "#/utils/constants";
 
 const LLM_EXCLUDED_KEYS = new Set(["llm.model", "llm.api_key", "llm.base_url"]);
 
@@ -76,21 +80,79 @@ const isProviderDefaultBaseUrl = (model: string, baseUrl: string) => {
   );
 };
 
-interface OpenHandsApiKeyHelpProps {
-  testId: string;
+/**
+ * Find the first registered cloud backend that has an API key.
+ * Returns `null` if none exists.
+ */
+function findCloudBackendWithKey(): { name: string; apiKey: string } | null {
+  const backends = getRegisteredBackends();
+  const cloud = backends.find((b) => b.kind === "cloud" && b.apiKey);
+  return cloud ? { name: cloud.name, apiKey: cloud.apiKey } : null;
 }
 
-function OpenHandsApiKeyHelp({ testId }: OpenHandsApiKeyHelpProps) {
+interface OpenHandsApiKeyAuthProps {
+  testId: string;
+  onApiKeyObtained: (key: string) => void;
+  isDisabled?: boolean;
+}
+
+/**
+ * Auth section shown when an `openhands/*` model is selected. Provides
+ * three ways to obtain the API key, in order of convenience:
+ *
+ * 1. "Use existing OpenHands key" — one-click if the user already has a
+ *    cloud backend registered with a key.
+ * 2. "Login with OpenHands" — device flow OAuth to get a new key.
+ * 3. Manual entry — the standard API key input (rendered separately by
+ *    the caller below this component).
+ */
+function OpenHandsApiKeyAuth({
+  testId,
+  onApiKeyObtained,
+  isDisabled,
+}: OpenHandsApiKeyAuthProps) {
   const { t } = useTranslation("openhands");
+  const cloudBackend = React.useMemo(findCloudBackendWithKey, []);
 
   return (
-    <HelpLink
-      testId={testId}
-      text={t(I18nKey.SETTINGS$OPENHANDS_API_KEY_HELP_TEXT)}
-      linkText={t(I18nKey.SETTINGS$NAV_API_KEYS)}
-      href="https://app.all-hands.dev/settings/api-keys"
-      suffix={` ${t(I18nKey.SETTINGS$OPENHANDS_API_KEY_HELP_SUFFIX)}`}
-    />
+    <div
+      className="flex flex-col gap-3"
+      data-testid={`${testId}-auth`}
+    >
+      {/* Option 1: Use existing cloud backend key */}
+      {cloudBackend && (
+        <BrandButton
+          type="button"
+          variant="secondary"
+          onClick={() => onApiKeyObtained(cloudBackend.apiKey)}
+          testId={`${testId}-use-existing-key`}
+          className="w-full"
+          isDisabled={isDisabled}
+        >
+          🔑 {t(I18nKey.SETTINGS$USE_EXISTING_OPENHANDS_KEY)}{" "}
+          <span className="text-xs opacity-70">
+            ({t(I18nKey.SETTINGS$OPENHANDS_KEY_FROM_BACKEND, { name: cloudBackend.name })})
+          </span>
+        </BrandButton>
+      )}
+
+      {/* Option 2: Device flow login */}
+      <DeviceFlowAuth
+        host={PRODUCT_URL.PRODUCTION}
+        onSuccess={onApiKeyObtained}
+        testIdRoot={testId}
+        isDisabled={isDisabled}
+      />
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 border-t border-gray-600" />
+        <span className="text-xs text-gray-500 uppercase">
+          {t(I18nKey.SETTINGS$OR_ENTER_MANUALLY)}
+        </span>
+        <div className="flex-1 border-t border-gray-600" />
+      </div>
+    </div>
   );
 }
 
@@ -155,10 +217,22 @@ export function LlmSettingsScreen({
         typeof values["llm.base_url"] === "string"
           ? values["llm.base_url"]
           : "";
-      const showOpenHandsApiKeyHelp = modelValue.startsWith("openhands/");
+      const isOpenHandsModel = modelValue.startsWith("openhands/");
 
-      const renderApiKeyInput = (testId: string, helpTestId: string) => (
+      const handleApiKeyObtained = (key: string) => {
+        onChange("llm.api_key", key);
+      };
+
+      const renderApiKeySection = (testId: string, helpTestId: string) => (
         <>
+          {isOpenHandsModel ? (
+            <OpenHandsApiKeyAuth
+              testId={testId}
+              onApiKeyObtained={handleApiKeyObtained}
+              isDisabled={isDisabled}
+            />
+          ) : null}
+
           <SettingsInput
             testId={testId}
             label={t(I18nKey.SETTINGS_FORM$API_KEY)}
@@ -179,12 +253,14 @@ export function LlmSettingsScreen({
             }
           />
 
-          <HelpLink
-            testId={helpTestId}
-            text={t(I18nKey.SETTINGS$DONT_KNOW_API_KEY)}
-            linkText={t(I18nKey.SETTINGS$CLICK_FOR_INSTRUCTIONS)}
-            href="https://docs.openhands.dev/usage/local-setup#getting-an-api-key"
-          />
+          {!isOpenHandsModel && (
+            <HelpLink
+              testId={helpTestId}
+              text={t(I18nKey.SETTINGS$DONT_KNOW_API_KEY)}
+              linkText={t(I18nKey.SETTINGS$CLICK_FOR_INSTRUCTIONS)}
+              href="https://docs.openhands.dev/usage/local-setup#getting-an-api-key"
+            />
+          )}
         </>
       );
 
@@ -208,11 +284,7 @@ export function LlmSettingsScreen({
                 isDisabled={isDisabled}
               />
 
-              {showOpenHandsApiKeyHelp ? (
-                <OpenHandsApiKeyHelp testId="openhands-api-key-help" />
-              ) : null}
-
-              {renderApiKeyInput(
+              {renderApiKeySection(
                 "llm-api-key-input",
                 "llm-api-key-help-anchor",
               )}
@@ -233,10 +305,6 @@ export function LlmSettingsScreen({
                 isDisabled={isDisabled}
               />
 
-              {showOpenHandsApiKeyHelp ? (
-                <OpenHandsApiKeyHelp testId="openhands-api-key-help-2" />
-              ) : null}
-
               <SettingsInput
                 testId="base-url-input"
                 label={t(I18nKey.SETTINGS$BASE_URL)}
@@ -248,7 +316,7 @@ export function LlmSettingsScreen({
                 isDisabled={isDisabled}
               />
 
-              {renderApiKeyInput(
+              {renderApiKeySection(
                 "llm-api-key-input",
                 "llm-api-key-help-anchor-advanced",
               )}
