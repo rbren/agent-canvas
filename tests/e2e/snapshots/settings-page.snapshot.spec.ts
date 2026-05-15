@@ -206,8 +206,8 @@ test.describe("UI Visual Snapshots", () => {
   test("Add backend modal renders correctly", async ({ page }) => {
     await setupMocks(page, false);
 
-    // Mock the server-info endpoint so the backend health check
-    // succeeds instead of hanging against the dev server.
+    // Mock the server-info health-check endpoint. Without this, the
+    // periodic health poll may prevent networkidle or cause hangs.
     await page.route("**/server_info", async (route) => {
       await route.fulfill({
         status: 200,
@@ -219,13 +219,15 @@ test.describe("UI Visual Snapshots", () => {
     await page.goto("/conversations");
     await dismissConsentModal(page);
 
-    const rootLayout = page.getByTestId("root-layout");
-    await expect(rootLayout).toBeVisible();
-    await page.waitForLoadState("networkidle");
+    const homeScreen = page.getByTestId("home-screen");
+    await expect(homeScreen).toBeVisible();
 
-    const backendSelector = page.getByTestId("backend-selector");
-    await expect(backendSelector).toBeVisible();
-    await backendSelector.getByTestId("dropdown-trigger").click();
+    // Wait for the backend selector to appear in the sidebar footer.
+    const trigger = page
+      .getByTestId("backend-selector")
+      .getByTestId("dropdown-trigger");
+    await expect(trigger).toBeVisible({ timeout: 15_000 });
+    await trigger.click();
     await page.getByTestId("add-backend-menu-item").click();
 
     const addBackendModal = page.getByTestId("add-backend-modal");
