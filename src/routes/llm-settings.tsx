@@ -116,7 +116,7 @@ function OpenHandsApiKeyAuth({
 
   return (
     <div
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-3 max-w-[680px]"
       data-testid={`${testId}-auth`}
     >
       {/* Option 1: Use existing cloud backend key */}
@@ -126,7 +126,6 @@ function OpenHandsApiKeyAuth({
           variant="secondary"
           onClick={() => onApiKeyObtained(cloudBackend.apiKey)}
           testId={`${testId}-use-existing-key`}
-          className="w-full"
           isDisabled={isDisabled}
         >
           🔑 {t(I18nKey.SETTINGS$USE_EXISTING_OPENHANDS_KEY)}{" "}
@@ -146,11 +145,11 @@ function OpenHandsApiKeyAuth({
 
       {/* Divider */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 border-t border-gray-600" />
-        <span className="text-xs text-gray-500 uppercase">
+        <div className="flex-1 border-t border-tertiary" />
+        <span className="text-xs text-tertiary-alt">
           {t(I18nKey.SETTINGS$OR_ENTER_MANUALLY)}
         </span>
-        <div className="flex-1 border-t border-gray-600" />
+        <div className="flex-1 border-t border-tertiary" />
       </div>
     </div>
   );
