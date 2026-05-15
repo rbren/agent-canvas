@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe("SkillsService.getSkills against the agent-server backend", () => {
-  it("scopes public skill loading to the curated default marketplace manifest", async () => {
+  it("requests public, user, and project skills without a marketplace_path override", async () => {
     mockGetSkills.mockResolvedValue({
       skills: [
         {
@@ -58,16 +58,20 @@ describe("SkillsService.getSkills against the agent-server backend", () => {
 
     const skills = await SkillsService.getSkills();
 
-    // load_public:true is always set alongside marketplace_path to scope
-    // loading to only the curated defaults — never the full 44+ cache.
+    // No marketplace_path is passed — the server uses its own default
+    // (marketplaces/default.json in the extensions repo). Passing a
+    // browser URL as marketplace_path breaks skill loading because the
+    // server resolves it as a relative filesystem path, not a URL.
     expect(mockGetSkills).toHaveBeenCalledTimes(1);
     expect(mockGetSkills.mock.calls[0]?.[0]).toMatchObject({
       load_public: true,
       load_user: true,
       load_project: true,
       load_org: false,
-      marketplace_path: `${window.location.origin}/default-skills-marketplace.json`,
     });
+    expect(mockGetSkills.mock.calls[0]?.[0]).not.toHaveProperty(
+      "marketplace_path",
+    );
     expect(skills.map((s) => s.name)).toEqual(["github"]);
   });
 });
