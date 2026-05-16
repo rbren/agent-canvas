@@ -145,6 +145,23 @@ describes. Specifically:
   Files: `src/components/features/sidebar/sidebar.tsx`
   Introduced: 9d130c4
 
+- **Workspace-picker dropdown on the conversations nav row** — new
+  fork-local component `RbrenWorkspacePicker` renders a small
+  outline-bordered chevron-down button on the right edge of the
+  conversations / "New Chat" nav row. Clicking it opens a popover
+  listing "No workspace" at the top followed by every workspace from
+  `useResolvedWorkspaces`; selecting any entry immediately starts a new
+  conversation in that workspace (via `useCreateConversation`) and
+  navigates to `/conversations/{id}`. The picker returns `null` when
+  the sidebar is collapsed. Wired into `sidebar-rail-body.tsx` via a
+  thin flex wrapper around the existing `SidebarNavLink` for the
+  conversations route; the upstream `SidebarNavLink` is **not**
+  modified, so the feature can be retired by deleting the picker file
+  plus the wrapping div.
+  Files: `src/components/features/sidebar/rbren-workspace-picker.tsx`
+  (new), `src/components/features/sidebar/sidebar-rail-body.tsx`
+  Introduced: HEAD
+
 #### Dev meta / skills
 
 - **`long-running-fork` skill** — this file. Fork-local skill documenting

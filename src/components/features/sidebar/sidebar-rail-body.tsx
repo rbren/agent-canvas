@@ -16,6 +16,8 @@ import { StyledTooltip } from "#/components/shared/buttons/styled-tooltip";
 import { BackendSelector } from "#/components/features/backends/backend-selector";
 import { BackendStatusDot } from "#/components/features/backends/backend-status-dot";
 import { SidebarConversationList } from "./sidebar-conversation-list";
+/* rbren's mod: workspace-picker dropdown on the conversations nav row. */
+import { RbrenWorkspacePicker } from "./rbren-workspace-picker";
 import AutomationsIcon from "#/icons/automations.svg?react";
 import {
   SIDEBAR_COLLAPSE_TOGGLE_OVERLAY_CLASS,
@@ -161,15 +163,27 @@ export function SidebarRailBody({
       </div>
 
       <nav className={sidebarNavListClassName(collapsed)}>
-        <SidebarNavLink
-          to="/conversations"
-          end
-          label="New Chat"
-          testId="sidebar-conversations-link"
-          disabled={linkDisabled}
-          collapsed={collapsed}
-          icon={<Plus width={ICON_SIZE} height={ICON_SIZE} />}
-        />
+        {/* rbren's mod: wrap the conversations nav row with a flex container
+            so a chevron-down workspace picker can sit on the right edge of
+            the row. The wrap is purely a layout aid — SidebarNavLink and
+            picker are independent siblings; SidebarNavLink stays unmodified
+            so the feature can be retired by deleting the wrap and the
+            picker file. In the collapsed (64px rail) layout the picker
+            renders nothing, so the wrapper degrades to a plain nav row. */}
+        <div className="flex items-center gap-1 w-full">
+          <div className="flex-1 min-w-0">
+            <SidebarNavLink
+              to="/conversations"
+              end
+              label="New Chat"
+              testId="sidebar-conversations-link"
+              disabled={linkDisabled}
+              collapsed={collapsed}
+              icon={<Plus width={ICON_SIZE} height={ICON_SIZE} />}
+            />
+          </div>
+          <RbrenWorkspacePicker collapsed={collapsed} />
+        </div>
         <SidebarNavLink
           to="/customize"
           label="Customize"
