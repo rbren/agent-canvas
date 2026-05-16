@@ -19,7 +19,10 @@ import {
   findInstalledMatch,
   installedServerMatchesQuery,
 } from "#/utils/mcp-marketplace-utils";
-import { MCP_MARKETPLACE, MarketplaceEntry } from "#/constants/mcp-marketplace";
+import {
+  MCP_CATALOG as MCP_MARKETPLACE,
+  type McpCatalogEntry as MarketplaceEntry,
+} from "@openhands/extensions/mcps";
 import { MCPServerConfig } from "#/types/mcp-server";
 import { flattenMcpConfig } from "#/utils/mcp-installed-servers";
 import {

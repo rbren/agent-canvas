@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RecommendedAutomationsSection } from "#/components/features/automations/recommended-automations-section";
 import { RecommendedAutomationSetupModal } from "#/components/features/automations/recommended-automation-setup-modal";
 import { RECOMMENDED_AUTOMATIONS } from "#/constants/recommended-automations";
-import { MCP_MARKETPLACE } from "#/constants/mcp-marketplace";
+import { MCP_CATALOG as MCP_MARKETPLACE } from "@openhands/extensions/mcps";
 import type { MCPServerConfig } from "#/types/mcp-server";
 
 vi.mock("react-i18next", () => ({

@@ -2,7 +2,7 @@ import { CheckCircle2, CircleAlert, Rocket, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { I18nKey } from "#/i18n/declaration";
 import type { RecommendedAutomation } from "#/constants/recommended-automations";
-import type { MarketplaceEntry } from "#/constants/mcp-marketplace";
+import type { McpCatalogEntry as MarketplaceEntry } from "@openhands/extensions/mcps";
 import type { MCPServerConfig } from "#/types/mcp-server";
 import { ModalBackdrop } from "#/components/shared/modals/modal-backdrop";
 import { BrandButton } from "#/components/features/settings/brand-button";

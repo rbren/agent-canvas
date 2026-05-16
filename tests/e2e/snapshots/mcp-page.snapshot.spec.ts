@@ -3,7 +3,7 @@ import { test, expect, Page } from "@playwright/test";
 /**
  * Visual snapshot tests for the MCP page (/mcp).
  *
- * The MCP marketplace catalog is hardcoded in src/constants/mcp-marketplace.ts,
+ * The MCP marketplace catalog is imported from @openhands/extensions/mcps,
  * so it never requires an API call.  Installed servers are read from
  * settings.agent_settings.mcp_config (SDK format: { mcpServers: { ... } }).
  *

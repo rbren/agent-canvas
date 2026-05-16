@@ -5,7 +5,7 @@ import { ModalBackdrop } from "#/components/shared/modals/modal-backdrop";
 import { BrandButton } from "#/components/features/settings/brand-button";
 import { SettingsInput } from "#/components/features/settings/settings-input";
 import { I18nKey } from "#/i18n/declaration";
-import { MarketplaceEntry } from "#/constants/mcp-marketplace";
+import type { McpCatalogEntry as MarketplaceEntry } from "@openhands/extensions/mcps";
 import { McpLogoBadge } from "#/components/features/mcp-logo-badge";
 import { MCPServerConfig } from "#/types/mcp-server";
 import { useAddMcpServer } from "#/hooks/mutation/use-add-mcp-server";

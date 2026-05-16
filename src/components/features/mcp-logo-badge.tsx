@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
-import { Puzzle } from "lucide-react";
-import type { MarketplaceEntry } from "#/constants/mcp-marketplace";
+import {
+  MCP_FALLBACK_LOGO,
+  MCP_LOGOS,
+  type McpCatalogEntry,
+} from "@openhands/extensions/mcps";
 import { cn } from "#/utils/utils";
 
 type McpLogoEntry = Pick<
-  MarketplaceEntry,
-  "name" | "logo" | "iconBg" | "iconColor"
+  McpCatalogEntry,
+  "id" | "name" | "iconBg" | "iconColor"
 >;
 
 interface McpLogoBadgeProps {
@@ -41,7 +44,9 @@ export function McpLogoBadge({
         color: entry?.iconColor ?? "#FFFFFF",
       }}
     >
-      {entry?.logo ?? fallback ?? <Puzzle strokeWidth={2.25} />}
+      {entry
+        ? (MCP_LOGOS[entry.id] ?? fallback ?? MCP_FALLBACK_LOGO)
+        : (fallback ?? MCP_FALLBACK_LOGO)}
     </span>
   );
 }

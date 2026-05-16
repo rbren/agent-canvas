@@ -4,7 +4,10 @@ import { useNavigation } from "#/context/navigation-context";
 import { useCreateConversation } from "#/hooks/mutation/use-create-conversation";
 import { useSettings } from "#/hooks/query/use-settings";
 import type { RecommendedAutomation } from "#/constants/recommended-automations";
-import { MCP_MARKETPLACE, MarketplaceEntry } from "#/constants/mcp-marketplace";
+import {
+  MCP_CATALOG as MCP_MARKETPLACE,
+  type McpCatalogEntry as MarketplaceEntry,
+} from "@openhands/extensions/mcps";
 import { parseMcpConfig } from "#/utils/mcp-config";
 import { flattenMcpConfig } from "#/utils/mcp-installed-servers";
 import { getMarketplaceEntryById } from "#/utils/mcp-marketplace-utils";

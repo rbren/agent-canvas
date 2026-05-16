@@ -1,6 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { I18nKey } from "#/i18n/declaration";
-import { MCP_MARKETPLACE, MarketplaceEntry } from "#/constants/mcp-marketplace";
+import {
+  MCP_CATALOG as MCP_MARKETPLACE,
+  type McpCatalogEntry as MarketplaceEntry,
+} from "@openhands/extensions/mcps";
 import {
   getMarketplaceEntriesByPopularity,
   isMarketplaceEntryAvailable,

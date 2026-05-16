@@ -1,8 +1,8 @@
 import { MCPServerConfig } from "#/types/mcp-server";
-import {
-  MarketplaceEntry,
+import type {
+  McpCatalogEntry as MarketplaceEntry,
   MarketplaceTemplate,
-} from "#/constants/mcp-marketplace";
+} from "@openhands/extensions/mcps";
 
 const tryUrl = (raw: string): URL | null => {
   try {

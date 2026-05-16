@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { I18nKey } from "#/i18n/declaration";
-import { MarketplaceEntry } from "#/constants/mcp-marketplace";
+import type { McpCatalogEntry as MarketplaceEntry } from "@openhands/extensions/mcps";
 import { McpLogoBadge } from "#/components/features/mcp-logo-badge";
 import { cn } from "#/utils/utils";
 

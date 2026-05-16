@@ -2,7 +2,10 @@ import { useTranslation } from "react-i18next";
 import { I18nKey } from "#/i18n/declaration";
 import type { RecommendedAutomation } from "#/constants/recommended-automations";
 import { getRecommendedAutomationsByPopularity } from "#/constants/recommended-automations";
-import { MCP_MARKETPLACE, MarketplaceEntry } from "#/constants/mcp-marketplace";
+import {
+  MCP_CATALOG as MCP_MARKETPLACE,
+  type McpCatalogEntry as MarketplaceEntry,
+} from "@openhands/extensions/mcps";
 import { McpLogoBadge } from "#/components/features/mcp-logo-badge";
 import { MCPServerConfig } from "#/types/mcp-server";
 import {
