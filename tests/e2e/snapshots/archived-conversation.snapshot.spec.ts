@@ -1,5 +1,74 @@
 import { test, expect, Page } from "@playwright/test";
 
+// ---------------------------------------------------------------------------
+// Echo-hello-world trajectory fixture
+//
+// Same shape as the MSW handler fixture in src/mocks/conversation-handlers.ts,
+// but kept here so the snapshot tests can inject it directly into the Zustand
+// event store without relying on cross-origin MSW interception (the mock dev
+// server lives on localhost:3001 while RemoteEventsList sends requests to the
+// configured backend host, which is 127.0.0.1:8000 — a different origin that
+// the Service Worker cannot intercept).
+// ---------------------------------------------------------------------------
+const ECHO_HELLO_WORLD_TRAJECTORY = [
+  {
+    id: "archived-evt-1",
+    timestamp: "2026-01-10T00:00:01.000Z",
+    source: "user",
+    llm_message: {
+      role: "user",
+      content: [{ type: "text", text: "echo hello world" }],
+    },
+    activated_microagents: [],
+    extended_content: [],
+  },
+  {
+    id: "archived-evt-2",
+    timestamp: "2026-01-10T00:00:02.000Z",
+    source: "agent",
+    thought: [
+      { type: "text", text: "I'll run the echo command as requested." },
+    ],
+    reasoning_content: null,
+    thinking_blocks: [],
+    action: {
+      kind: "ExecuteBashAction",
+      command: "echo hello world",
+      is_input: false,
+      timeout: null,
+      reset: false,
+    },
+    tool_name: "execute_bash",
+    tool_call_id: "call-archived-bash-1",
+    tool_call: {
+      id: "call-archived-bash-1",
+      type: "function",
+      function: {
+        name: "execute_bash",
+        arguments: JSON.stringify({ command: "echo hello world" }),
+      },
+    },
+    llm_response_id: "archived-response-1",
+  },
+  {
+    id: "archived-evt-3",
+    timestamp: "2026-01-10T00:00:03.000Z",
+    source: "environment",
+    action_id: "archived-evt-2",
+    tool_name: "execute_bash",
+    tool_call_id: "call-archived-bash-1",
+    observation: {
+      kind: "ExecuteBashObservation",
+      output: "hello world",
+      command: "echo hello world",
+      exit_code: 0,
+      error: false,
+      timed_out: false,
+      metadata: {},
+    },
+  },
+];
+
 /**
  * Visual snapshot tests for archived / sandbox-error conversation states.
  *
@@ -105,6 +174,54 @@ async function stubWebSocket(page: Page) {
 }
 
 /**
+ * Inject events directly into the Zustand event store via the exposed
+ * `window.__OH_EVENT_STORE__` API. Bypasses the MSW service-worker /
+ * cross-origin fetch path; required for conversation-page tests where
+ * RemoteEventsList sends requests to the configured backend host (a
+ * different origin that the Service Worker cannot intercept).
+ *
+ * Mirrors the same helper used in collapsible-thinking.snapshot.spec.ts.
+ */
+async function injectEvents(page: Page, events: unknown[]) {
+  await page.waitForFunction(() => {
+    const store = (
+      window as unknown as {
+        __OH_EVENT_STORE__?: {
+          getState: () => { addEvents?: (e: unknown[]) => void };
+        };
+      }
+    ).__OH_EVENT_STORE__;
+    return Boolean(store?.getState().addEvents);
+  });
+
+  await expect
+    .poll(
+      async () =>
+        page.evaluate((evts) => {
+          const store = (
+            window as unknown as {
+              __OH_EVENT_STORE__?: {
+                getState: () => {
+                  addEvents: (e: unknown[]) => void;
+                  events: unknown[];
+                };
+              };
+            }
+          ).__OH_EVENT_STORE__;
+          if (!store) return 0;
+          const state = store.getState();
+          state.addEvents(evts);
+          return store.getState().events.length;
+        }, events),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThanOrEqual(events.length);
+
+  // Give React one tick to re-render the new events.
+  await page.waitForTimeout(500);
+}
+
+/**
  * Navigate to a specific conversation page and wait until the chat interface
  * is visible. Call `stubWebSocket` first so the WS never throws.
  */
@@ -178,12 +295,13 @@ test.describe("Archived Conversation Visual Snapshots", () => {
     // The interactive chat box must NOT be present.
     await expect(page.getByTestId("interactive-chat-box")).toHaveCount(0);
 
-    // Wait for the trajectory fetched from GET /events/search to render.
-    // MSW returns the echo-hello-world trajectory for conversation 4; the
-    // user message is the first item visible in the chat history.
-    await expect(chatInterface.getByText("echo hello world")).toBeVisible({
-      timeout: 10_000,
-    });
+    // Inject trajectory events directly into the Zustand store.
+    // MSW cannot intercept the cross-origin RemoteEventsList request
+    // (127.0.0.1:8000 ≠ localhost:3001), so we use the store API instead.
+    await injectEvents(page, ECHO_HELLO_WORLD_TRAJECTORY);
+
+    // Verify the user message rendered above the banner.
+    await expect(chatInterface.getByText("echo hello world")).toBeVisible();
 
     // Snapshot: chat history above with archived banner at the bottom.
     await expect(chatInterface).toHaveScreenshot(
@@ -212,10 +330,11 @@ test.describe("Archived Conversation Visual Snapshots", () => {
     // The interactive chat box must NOT be present.
     await expect(page.getByTestId("interactive-chat-box")).toHaveCount(0);
 
-    // Wait for the trajectory to render (same fixture as the archived view).
-    await expect(chatInterface.getByText("echo hello world")).toBeVisible({
-      timeout: 10_000,
-    });
+    // Inject trajectory events directly into the Zustand store.
+    await injectEvents(page, ECHO_HELLO_WORLD_TRAJECTORY);
+
+    // Verify the user message rendered above the banner.
+    await expect(chatInterface.getByText("echo hello world")).toBeVisible();
 
     // Snapshot: chat history above with sandbox-error banner at the bottom.
     await expect(chatInterface).toHaveScreenshot(
