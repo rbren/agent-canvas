@@ -174,21 +174,27 @@ describes. Specifically:
   Files: `src/components/features/sidebar/sidebar.tsx`
   Introduced: 9d130c4
 
-- **Workspace-picker dropdown on the conversations nav row** — new
-  fork-local component `RbrenWorkspacePicker` renders a small
+- **Workspace-/repo-picker dropdown on the conversations nav row** —
+  new fork-local component `RbrenWorkspacePicker` renders a small
   outline-bordered chevron-down button on the right edge of the
-  conversations / "New Chat" nav row. Clicking it opens a popover
-  listing "No workspace" at the top followed by every workspace from
-  `useResolvedWorkspaces`; selecting any entry immediately starts a new
-  conversation in that workspace (via `useCreateConversation`) and
-  navigates to `/conversations/{id}`. The picker returns `null` when
-  the sidebar is collapsed. Wired into `sidebar-rail-body.tsx` via a
-  thin flex wrapper around the existing `SidebarNavLink` for the
-  conversations route; the upstream `SidebarNavLink` is **not**
-  modified, so the feature can be retired by deleting the picker file
-  plus the wrapping div.
+  conversations / "New Chat" nav row. Clicking it opens a popover whose
+  content depends on the active backend: in **local** mode it lists
+  "No workspace" at the top followed by every workspace from
+  `useResolvedWorkspaces`; in **cloud** mode it delegates to a sibling
+  `RbrenRepoPicker` that lists git repositories (with provider tabs +
+  search + paginated loading via `useGitRepositories` /
+  `useSearchRepositories` / `useUserProviders`) with a "No repository"
+  entry at the top. Selecting any entry immediately starts a new
+  conversation (workspace path in local mode, repo + default branch in
+  cloud mode) via `useCreateConversation` and navigates to
+  `/conversations/{id}`. The picker returns `null` when the sidebar is
+  collapsed. Wired into `sidebar-rail-body.tsx` via a thin flex wrapper
+  around the existing `SidebarNavLink` for the conversations route; the
+  upstream `SidebarNavLink` is **not** modified, so the feature can be
+  retired by deleting both picker files plus the wrapping div.
   Files: `src/components/features/sidebar/rbren-workspace-picker.tsx`
-  (new), `src/components/features/sidebar/sidebar-rail-body.tsx`
+  (new), `src/components/features/sidebar/rbren-repo-picker.tsx` (new),
+  `src/components/features/sidebar/sidebar-rail-body.tsx`
   Introduced: 05572b2
 
 #### Dev meta / skills

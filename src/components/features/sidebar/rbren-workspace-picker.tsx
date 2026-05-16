@@ -14,6 +14,10 @@
  * trio, same outside-click / Escape close behavior). This is intentionally
  * separate so the fork-local sidebar tweak can be retired by deleting this
  * file + the wrapping div in `sidebar.tsx`.
+ *
+ * In cloud mode the local-workspace concept doesn't apply, so this
+ * component delegates to `RbrenRepoPicker` which renders the same trigger
+ * but lists git repositories instead.
  */
 import React from "react";
 import { ChevronDown } from "lucide-react";
@@ -22,7 +26,9 @@ import { useCreateConversation } from "#/hooks/mutation/use-create-conversation"
 import { useNavigation } from "#/context/navigation-context";
 import { useIsCreatingConversation } from "#/hooks/use-is-creating-conversation";
 import { useResolvedWorkspaces } from "#/hooks/query/use-resolved-workspaces";
+import { useActiveBackend } from "#/contexts/active-backend-context";
 import { cn } from "#/utils/utils";
+import { RbrenRepoPicker } from "./rbren-repo-picker";
 
 interface RbrenWorkspacePickerProps {
   /** Hide the picker entirely when the sidebar is collapsed to a 64px rail. */
@@ -30,6 +36,13 @@ interface RbrenWorkspacePickerProps {
 }
 
 export function RbrenWorkspacePicker({ collapsed }: RbrenWorkspacePickerProps) {
+  const isCloud = useActiveBackend().backend.kind === "cloud";
+  if (isCloud) return <RbrenRepoPicker collapsed={collapsed} />;
+
+  return <LocalWorkspacePicker collapsed={collapsed} />;
+}
+
+function LocalWorkspacePicker({ collapsed }: RbrenWorkspacePickerProps) {
   const [open, setOpen] = React.useState(false);
   const wrapRef = React.useRef<HTMLDivElement>(null);
   const { navigate } = useNavigation();
