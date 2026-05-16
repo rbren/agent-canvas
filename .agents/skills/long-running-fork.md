@@ -1,22 +1,50 @@
 ---
 name: long-running-fork
-description: Repo-specific guidance for the `rbren` long-running fork of OpenHands/agent-canvas. Auto-loaded for any task on this branch so changes stay easy to merge from / into `main`.
+description: Repo-specific guidance for the long-running personal fork `rbren/agent-canvas` of `OpenHands/agent-canvas`. Auto-loaded for any task on the fork's `main` branch (which diverges from upstream `main`) so changes stay easy to merge from / into upstream.
 triggers:
 - rbren
+- rbren/agent-canvas
 - long-running fork
 - merge upstream
 - rebase upstream
 - upstream merge
 ---
 
-# Long-Running Fork — `rbren` Branch
+# Long-Running Fork — `rbren/agent-canvas`
 
-This branch (`rbren`) is a **long-running personal fork** of `OpenHands/agent-canvas`
-maintained by Robert Brennan. It carries personal preferences (theming, layout
-tweaks, dev-loop helpers, etc.) on top of `main` and is rebased / fast-forwarded
-onto upstream periodically.
+This repository is checked out from **`rbren/agent-canvas`**, a long-running
+personal fork of `OpenHands/agent-canvas` maintained by Robert Brennan. The
+fork's default branch is **`main`**, which intentionally **diverges from
+upstream `main`** — it carries personal preferences (theming, layout
+tweaks, dev-loop helpers, etc.) on top of upstream and is rebased onto
+upstream periodically.
 
-**The branch's #1 maintenance constraint is staying easy to merge with `main`.**
+> **There is no `rbren` branch on this fork.** The fork itself plays the
+> role the old `rbren` branch used to play; `main` here is "rbren's main".
+> The literal token `rbren branch:` is still used in source comments as a
+> fixed marker for fork-local edits (see "Mark every fork-local edit" in
+> Core Principles) — it's a recognizable string, not a current branch name.
+
+### Remote setup
+
+This repo is configured with two remotes, both over SSH:
+
+- `origin` → `ssh://git@github.com/rbren/agent-canvas.git` — the fork.
+  Default branch `main`. This is where the fork's `main` is pushed.
+- `upstream` → `ssh://git@github.com/OpenHands/agent-canvas.git` — the
+  canonical repo. Default branch `main`. Fetch from here to sync upstream
+  changes; never push to it directly.
+
+If you see `origin` pointed at `OpenHands/agent-canvas` (e.g. on a clone
+made before the fork existed), fix it before pushing:
+
+```sh
+git remote set-url origin ssh://git@github.com/rbren/agent-canvas.git
+git remote add upstream ssh://git@github.com/OpenHands/agent-canvas.git 2>/dev/null || \
+  git remote set-url upstream ssh://git@github.com/OpenHands/agent-canvas.git
+```
+
+**The fork's #1 maintenance constraint is staying easy to merge with upstream `main`.**
 Every change must be made with the question "how painful will this be to rebase
 when upstream evolves?" in mind. Optimize for low merge-conflict surface area,
 not for elegance in isolation.
@@ -24,8 +52,9 @@ not for elegance in isolation.
 ## MODLOG — Live Fork-Local Modifications
 
 This section is the **canonical inventory** of everything that diverges from
-upstream `main` on this branch. Treat it as authoritative: if a change isn't
-listed here, it isn't intentionally fork-local.
+upstream `main` (i.e. `upstream/main`) on the fork's `main`. Treat it as
+authoritative: if a change isn't listed here, it isn't intentionally
+fork-local.
 
 Each entry describes the **current final state** of one piece of fork-local
 behavior plus the original introducing commit (as a historical anchor — full
@@ -33,7 +62,7 @@ history lives in `git log`). One-line descriptions are best; this is a
 ledger, not a changelog.
 
 > **The MODLOG is NOT a timeline. It is an unsorted inventory of the
-> divergences that currently exist on this branch, grouped by topic for
+> divergences that currently exist on the fork, grouped by topic for
 > readability.** Don't read entry order as chronology. Entries are grouped
 > under category subheadings (`#### …`) and may be reordered or moved
 > between groups whenever it makes the inventory easier to navigate.
@@ -165,8 +194,9 @@ describes. Specifically:
 #### Dev meta / skills
 
 - **`long-running-fork` skill** — this file. Fork-local skill documenting
+  the `rbren/agent-canvas` ↔ `OpenHands/agent-canvas` remote setup,
   maintenance discipline, upstream-issue escalation path, the MODLOG, and
-  the SYNCLOG. Loaded automatically on every task for this branch.
+  the SYNCLOG. Loaded automatically on every task on the fork's `main`.
   Files: `.agents/skills/long-running-fork.md`
   Introduced: 82f2bc7
 
@@ -175,7 +205,8 @@ describes. Specifically:
 Before any rebase, cross-check that the MODLOG matches reality:
 
 ```sh
-git --no-pager log --oneline main..HEAD
+git fetch upstream
+git --no-pager log --oneline upstream/main..HEAD
 git grep -n "rbren branch:" -- ':(exclude).agents/skills/long-running-fork.md'
 ```
 
@@ -186,12 +217,12 @@ something is missing on either side, fix the MODLOG before rebasing.
 ## SYNCLOG — Upstream Sync History
 
 **Unlike the MODLOG, the SYNCLOG _is_ a timeline.** It is a chronological,
-append-only record of every time upstream `main` was synced into this
-branch (whether via merge or rebase). Newest entries go at the **bottom**.
+append-only record of every time upstream `main` was synced into the fork's
+`main` (whether via merge or rebase). Newest entries go at the **bottom**.
 
-The first entry is the commit on `main` that this branch was originally
-branched from (no merge happened — it's the starting point of all later
-diffs). Every subsequent entry records a merge / rebase and any
+The first entry is the commit on upstream `main` that the fork was
+originally branched from (no merge happened — it's the starting point of
+all later diffs). Every subsequent entry records a merge / rebase and any
 conflicts, breakages, or follow-up fixes that had to be addressed to make
 the sync stick.
 
@@ -212,16 +243,17 @@ the sync stick.
 
 ```
 - **YYYY-MM-DD** — synced upstream `main` at `<short hash>` ("<commit title>")
-  - Sync commit: `<short hash on rbren>` (omit for the initial branch point)
+  - Sync commit: `<short hash on the fork's main>` (omit for the initial branch point)
   - Conflicts: <comma-separated files / paths>, or "None"
   - Notes: <one-paragraph summary of any breakages, fork-local fix-ups,
             or behavior shifts that landed in the sync commit>. Use "None"
             for clean merges.
 ```
 
-The "Sync commit" is the rbren-branch commit that *applied* the merge /
-rebase (so the reader can `git show` it). For the very first entry — the
-initial branch point — there is no sync commit and the line is omitted.
+The "Sync commit" is the commit on the fork's `main` that *applied* the
+merge / rebase (so the reader can `git show` it). For the very first
+entry — the initial branch point — there is no sync commit and the line
+is omitted.
 
 ### Maintenance rules
 
@@ -246,10 +278,13 @@ initial branch point — there is no sync commit and the line is omitted.
 - **2026-05-16** — branched from `f7c7dbe` ("perf(snapshots): skip retries
   on comparison pass, suppress consent modal (#505)") on upstream `main`.
   - Conflicts: N/A (initial branch point, not a sync)
-  - Notes: starting commit of the `rbren` long-running branch. All
-    fork-local divergences listed in the MODLOG above were introduced on
-    top of this commit. The initial fork-local commit on `rbren` was
-    `82f2bc7` ("Initialize rbren long-running branch").
+  - Notes: starting commit of the long-running fork. All fork-local
+    divergences listed in the MODLOG above were introduced on top of this
+    commit. The initial fork-local commit was `82f2bc7` ("Initialize rbren
+    long-running branch"). This work originally lived on a branch called
+    `rbren` inside `OpenHands/agent-canvas`; it was subsequently moved to
+    the `main` branch of a dedicated fork at `rbren/agent-canvas` (no
+    history rewrite — same commit graph, new home).
 
 ## Core Principles
 
@@ -263,13 +298,17 @@ initial branch point — there is no sync commit and the line is omitted.
    possible. One-line edits at the bottom of a file rebase cleanly; reorganizing
    the file or sprinkling edits throughout it does not.
 
-3. **Mark every fork-local edit clearly.** Any line that exists only on this
-   branch must carry a `rbren branch:` (or `rbren:`) comment so future merges
+3. **Mark every fork-local edit clearly.** Any line that exists only on the
+   fork must carry a `rbren branch:` (or `rbren:`) comment so future merges
    can immediately identify what is local vs. upstream. This also makes it
-   trivial to grep for fork-local code: `git grep -n "rbren branch:"`.
+   trivial to grep for fork-local code: `git grep -n "rbren branch:"`. The
+   literal token `rbren branch:` is preserved as a fixed marker for grep /
+   tooling reasons — it predates the move to a dedicated fork and is *not*
+   a current git branch name. Don't rename it without a coordinated sweep
+   across the whole tree.
 
 4. **Quarantine fork-local code where possible.** Prefer putting fork-local code
-   in a file that *only exists on this branch* (e.g. under `.agents/skills/`,
+   in a file that *only exists on the fork* (e.g. under `.agents/skills/`,
    a new file under `src/themes/`, a new script under `scripts/`). New files
    never conflict on merge; edits to shared files often do.
 
@@ -320,8 +359,8 @@ export const RBREN_USE_HACKERY_THEME_BY_DEFAULT = true;
 ### Tests
 
 - Don't update upstream snapshot tests just because the theme looks different
-  on this branch. Either:
-  - Mark those snapshot tests skipped on the `rbren` branch with a clear
+  on the fork. Either:
+  - Mark those snapshot tests skipped on the fork's `main` with a clear
     `rbren branch:` comment, or
   - Maintain a parallel fork-local snapshot directory and switch on the
     fork-local flag.
@@ -337,8 +376,8 @@ export const RBREN_USE_HACKERY_THEME_BY_DEFAULT = true;
 
 ### Documentation
 
-- The branch's `README.md` divergence from upstream is **expected and
-  documented** — the top of the README explains this is a long-running branch
+- The fork's `README.md` divergence from upstream is **expected and
+  documented** — the top of the README explains this is a long-running fork
   and the rest of the file is "Upstream README". When rebasing onto upstream,
   resolve `README.md` conflicts by keeping the `rbren` header section and
   replacing the "Upstream README" body with the new upstream README content
@@ -346,27 +385,36 @@ export const RBREN_USE_HACKERY_THEME_BY_DEFAULT = true;
 
 ## Rebasing / Merging Upstream
 
-When pulling in upstream `main`:
+When pulling in upstream `main` from `OpenHands/agent-canvas`:
 
-1. Prefer **rebase** over **merge** so the branch stays a clean linear set of
-   "rbren-only" commits on top of `main`. This keeps `git log main..rbren`
-   readable as exactly "what is fork-local".
-2. Before rebasing, run:
+1. Fetch upstream first (it's a separate remote — see "Remote setup" above):
+   ```sh
+   git fetch upstream
+   ```
+2. Prefer **rebase** over **merge** so the fork's `main` stays a clean
+   linear set of "rbren-only" commits on top of upstream `main`. This keeps
+   `git log upstream/main..origin/main` readable as exactly "what is
+   fork-local".
+   ```sh
+   git rebase upstream/main
+   ```
+3. Before rebasing, run:
    ```sh
    git grep -n "rbren branch:" -- ':(exclude).agents/skills/long-running-fork.md'
    ```
    to remind yourself of every fork-local edit. If something on that list no
    longer needs to exist (because upstream now does the same thing), drop it
    during the rebase instead of carrying it forward.
-3. If a rebase hits a conflict in a file that *only* contains "rbren branch:"
+4. If a rebase hits a conflict in a file that *only* contains "rbren branch:"
    markers, prefer resolving by re-applying the marker on top of the new
    upstream content rather than blindly keeping the fork-local version. The
    marker is the contract; the surrounding lines belong to upstream.
-4. After the rebase, force-push with lease:
+5. After the rebase, force-push with lease to the **fork** (origin):
    ```sh
-   git push --force-with-lease origin rbren
+   git push --force-with-lease origin main
    ```
-   (Never plain `--force` against a long-running branch.)
+   (Never plain `--force` against a long-running branch. Never push to
+   `upstream`.)
 
 ## Pushing Upstream When Conflicts Recur
 
@@ -381,8 +429,8 @@ rebase friction.
 
 File one when **two or more** of these are true:
 
-- The same upstream file (or small cluster of files) has conflicted on this
-  branch across multiple rebases.
+- The same upstream file (or small cluster of files) has conflicted on the
+  fork across multiple rebases.
 - The fork-local edit is structurally the same each time (a label swap,
   a default value flip, a feature gated on / off, a different color, etc.).
 - The change is something other fork maintainers would plausibly also want
@@ -407,9 +455,10 @@ Body (fill in each section):
 
 ```
 ### Context
-This came up while maintaining the long-running `rbren` fork of
-agent-canvas, where a fork-local tweak to <FILE / FEATURE> has
-conflicted on <N> consecutive rebases of `main` into `rbren`.
+This came up while maintaining the long-running `rbren/agent-canvas` fork
+of `OpenHands/agent-canvas`, where a fork-local tweak to <FILE / FEATURE>
+has conflicted on <N> consecutive rebases of upstream `main` into the
+fork's `main`.
 
 ### Current behavior
 <What upstream currently does — link the exact lines / file.>
@@ -440,7 +489,7 @@ Always include the standard AI-disclosure line in the body, since the issue
 will be read by humans:
 
 > _This issue was opened by an AI agent (OpenHands) on behalf of @rbren while
-> maintaining the long-running `rbren` fork._
+> maintaining the long-running `rbren/agent-canvas` fork._
 
 ### After filing
 
@@ -476,4 +525,4 @@ stop and ask:
   upstream rebase for the foreseeable future?
 
 The default answer for invasive edits to shared files is **no**. The cost of
-this branch is rebase pain, and rebase pain compounds.
+this fork is rebase pain, and rebase pain compounds.

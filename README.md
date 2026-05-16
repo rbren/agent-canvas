@@ -1,18 +1,19 @@
-# agent-canvas — `rbren` branch
+# agent-canvas — `rbren/agent-canvas` fork
 
 > [!NOTE]
-> This is a **long-running branch** maintained by **Robert Brennan** (`@rbren`).
-> It carries personal preferences (theming, layout tweaks, dev-loop helpers, etc.) on top of `main`.
-> It is rebased / fast-forwarded onto `main` periodically and is not guaranteed to be stable
-> between rebases. If you are looking for the canonical project, use `main`.
+> This is a **long-running personal fork** of [`OpenHands/agent-canvas`](https://github.com/OpenHands/agent-canvas) maintained by **Robert Brennan** (`@rbren`).
+> The fork's default branch — this `main` — intentionally **diverges from upstream `main`** to carry personal preferences (theming, layout tweaks, dev-loop helpers, etc.) on top of upstream.
+> It is rebased onto upstream periodically and is not guaranteed to be stable between rebases. If you are looking for the canonical project, use [`OpenHands/agent-canvas`](https://github.com/OpenHands/agent-canvas).
 
 > [!IMPORTANT]
-> **Maintainers and agents working on this branch:** read
+> **Maintainers and agents working on this fork:** read
 > [`.agents/skills/long-running-fork.md`](.agents/skills/long-running-fork.md)
-> first. It documents the merge-friendly editing discipline, the **MODLOG**
-> (canonical inventory of every fork-local divergence from `main`), and the
-> **SYNCLOG** (chronological record of upstream syncs). The skill is also
-> auto-loaded by OpenHands for every task on this branch.
+> first. It documents the merge-friendly editing discipline, the remote
+> layout (`origin` = fork, `upstream` = `OpenHands/agent-canvas`), the
+> **MODLOG** (canonical inventory of every fork-local divergence from
+> upstream `main`), and the **SYNCLOG** (chronological record of upstream
+> syncs). The skill is also auto-loaded by OpenHands for every task on
+> this fork's `main`.
 
 ## Robert's dockerless VM install
 
@@ -36,8 +37,8 @@ available (or not desired) and the VM is dedicated to running Agent Canvas.
 # 1. Install uv (one-liner from astral.sh)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 2. Clone this branch
-git clone -b rbren https://github.com/OpenHands/agent-canvas.git
+# 2. Clone this fork (default branch is `main`, which is the customized one)
+git clone https://github.com/rbren/agent-canvas.git
 cd agent-canvas
 
 # 3. Install JS deps and run dockerless
