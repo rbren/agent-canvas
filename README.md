@@ -45,7 +45,7 @@ If you want the Docker agent server to access existing repositories on your mach
 PROJECT_PATH=/path/to/your/projects openhands
 ```
 
-`PROJECT_PATH` is optional. When it is omitted, Agent Canvas still starts with its managed internal workspace directory; set `PROJECT_PATH` only when you want `/projects` inside the container to point at a host folder. If you want the **Add Workspace** dialog to browse your real host filesystem, also set `OH_MOUNT_HOST_HOME=1`.
+`PROJECT_PATH` is optional. It is the host-side folder you want Docker to mount at `/projects` inside the agent-server container. Agent Canvas then treats `/projects` as a workspace parent and lists its immediate subdirectories as candidate workspaces. When `PROJECT_PATH` is omitted, Agent Canvas still starts with its managed internal workspace directory; set `PROJECT_PATH` only when you want `/projects` to point at a host folder. If you want the **Add Workspace** dialog to browse your real host filesystem, also set `OH_MOUNT_HOST_HOME=1`.
 
 ### Split frontend/backend mode
 
@@ -76,6 +76,8 @@ cd agent-canvas
 npm install
 npm run dev:docker
 ```
+
+Just like the packaged CLI, `PROJECT_PATH` is optional here. Set `PROJECT_PATH=/path/to/your/projects` only if you want Docker to mount a host projects folder at `/projects`; otherwise you can launch first and add workspaces from the UI later.
 
 This serves a static production build of the frontend behind the local ingress proxy. That is the recommended source mode for normal use, remote access, and tunnels such as ngrok because it avoids Vite hot-reload restarts and large dev-module request bursts. If you are developing the Agent Canvas frontend itself and want live reload, use `npm run dev:docker:dynamic` instead.
 
