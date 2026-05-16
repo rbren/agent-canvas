@@ -19,6 +19,81 @@
 - Verification command: `npm run typecheck && npm run build`.
 - GitHub automation now includes `.github/workflows/ci.yml` for `npm ci`, `npm test`, and `npm run build`, plus `.github/dependabot.yml` with weekly npm/github-actions updates gated by a 7-day cooldown.
 
+## Runtime Services in Dev Stacks
+
+- When the agent-canvas dev launchers (`npm run dev:safe` / `dev:automation` / `dev:docker` / the published `agent-canvas` binary) start a stack, they set a `VITE_RUNTIME_SERVICES_INFO` env var on the frontend describing which services are running and how the agent should reach them. The frontend forwards this verbatim as `AgentContext.system_message_suffix` on every `POST /api/conversations`, so conversations land with a `<RUNTIME_SERVICES>` block appended to the system prompt.
+- The block lists URLs **from the agent's point of view**:
+  - The Agent Server is always reachable as `http://localhost:<port>` from inside the sandbox — but that is _you_, not the automation backend.
+  - Host-side services (ingress, Vite, automation) are reachable as `http://localhost:<port>` in dockerless modes and `http://host.docker.internal:<port>` in `dev:docker`.
+- Agents should treat the `<RUNTIME_SERVICES>` block as authoritative: don't hardcode `localhost:8000` for "the automation server", and don't probe random ports trying to discover services. If the block says automation is not running, skip `/api/automation` calls; otherwise use the listed `url_from_agent` + `api_prefix` (default `/api/automation`) and the `X-API-Key: $OPENHANDS_AUTOMATION_API_KEY` header.
+- The launcher → frontend → suffix plumbing is:
+  - `scripts/dev-safe.mjs::buildRuntimeServicesInfo()` — pure helper that constructs the info object.
+  - `scripts/dev-with-automation.mjs::buildAutomationRuntimeServicesInfo()` — wraps it with automation details; called from both Vite spawn (`startVite`) and the static build (`static-build.mjs`).
+  - `scripts/dev-docker.mjs` and `bin/agent-canvas.mjs` pass `agentHostAlias: "host.docker.internal"` to `main()` because the agent-server runs in a container in those modes.
+  - `src/api/agent-server-adapter.ts::buildRuntimeServicesSystemSuffix()` reads `VITE_RUNTIME_SERVICES_INFO` and renders the `<RUNTIME_SERVICES>` markdown block; `createAgentFromSettings()` attaches it to `agent_context.system_message_suffix` when present.
+
+### `VITE_RUNTIME_SERVICES_INFO` shape
+
+The env var is a JSON string of:
+
+```json
+{
+  "mode": "dev:docker",
+  "agent_host_alias": "host.docker.internal",
+  "services": {
+    "agent_server": {
+      "description": "The OpenHands Agent Server this agent is running inside. ...",
+      "url_from_agent": "http://localhost:8000"
+    },
+    "ingress": {
+      "description": "Unified entry point. Routes /api/automation/* ...",
+      "url_from_agent": "http://host.docker.internal:8000"
+    },
+    "frontend": {
+      "kind": "vite",
+      "description": "Vite dev server hosting the agent-canvas frontend.",
+      "url_from_agent": "http://host.docker.internal:3001"
+    },
+    "automation": {
+      "description": "OpenHands Automations service. All routes are mounted under '/api/automation'. Authenticate with header 'X-API-Key: $OPENHANDS_AUTOMATION_API_KEY'.",
+      "url_from_agent": "http://host.docker.internal:18001",
+      "api_prefix": "/api/automation",
+      "docs_url": "http://host.docker.internal:18001/api/automation/docs",
+      "openapi_url": "http://host.docker.internal:18001/api/automation/openapi.json",
+      "auth_env_var": "OPENHANDS_AUTOMATION_API_KEY"
+    }
+  }
+}
+```
+
+All keys under `services` are optional and omitted when the corresponding service isn't running. `frontend.kind` is `"vite"` for dev launchers running the Vite dev server and `"static"` for stacks serving a pre-built `build/` directory (`dev:docker`, `dev:dangerously-dockerless`, the published `agent-canvas` binary). `services.vite` is accepted as a legacy alias for `services.frontend` by the renderer.
+
+### Example `<RUNTIME_SERVICES>` block (dev:docker with automation)
+
+```
+<RUNTIME_SERVICES>
+You are running inside an agent-canvas dev stack started in 'dev:docker' mode.
+The following services are reachable from your sandbox. URLs are written
+from your point of view (i.e., as you should curl/fetch them).
+
+* Agent Server (you): http://localhost:8000
+    The OpenHands Agent Server this agent is running inside. Tool calls (terminal, file_editor, browser, etc.) execute here.
+* Ingress: http://host.docker.internal:8000
+    Unified entry point. Routes /api/automation/* to the automation backend, /api/* and /sockets to the agent-server, and /* to the frontend.
+* Frontend: http://host.docker.internal:3001
+    Static-file server hosting the agent-canvas production build.
+* Automation backend: http://host.docker.internal:18001
+    OpenHands Automations service. All routes are mounted under '/api/automation'. Authenticate with header 'X-API-Key: $OPENHANDS_AUTOMATION_API_KEY'.
+    Docs:    http://host.docker.internal:18001/api/automation/docs
+    OpenAPI: http://host.docker.internal:18001/api/automation/openapi.json
+    Auth:    header 'X-API-Key: $OPENHANDS_AUTOMATION_API_KEY'
+
+Trust this block over guessing: do not assume any other URLs are running.
+In particular, http://localhost:8000 inside your sandbox is the Agent Server
+you are running inside of — NOT the automation backend.
+</RUNTIME_SERVICES>
+```
+
 ## Visual Snapshot Testing
 
 - Snapshot tests live in `tests/e2e/snapshots/` and compare screenshots against baselines stored as GitHub Actions artifacts (NOT in git).
@@ -29,6 +104,7 @@
   - **On PRs**: Downloads the latest `snapshot-baselines` artifact, runs `test:e2e:snapshots` against it, generates current snapshots via `test:e2e:snapshots:update`, then posts a fresh PR comment (old comment is deleted first so image URLs always point to the current run). Changed snapshots are shown in a side-by-side expected/actual/diff table; new snapshots show the full screenshot. Images are force-pushed to a dedicated `snapshot-artifacts/pr-<N>` orphan branch (NOT the PR branch) so required CI checks are never invalidated. URLs are `raw.githubusercontent.com/<owner>/<repo>/<sha>/changed/...` or `.../new/...`. Triggers: `opened`, `synchronize`, `reopened`, `labeled`, `unlabeled`.
   - **Force-regenerate baselines**: Trigger the `Snapshot Tests` workflow manually with `force_update=true`.
 - **PR comment**: `tests/e2e/snapshots/scripts/post-snapshot-comment.mjs` posts a fresh comment (`<!-- snapshot-test-report -->` marker) with collapsed `<details>` sections — 🔴 Changed (side-by-side expected/actual/diff), 🆕 New (full screenshot), ✅ Unchanged (list of names).
+- **Critical ordering note**: Playwright clears `test-results/` at the start of every new run. The workflow runs two Playwright passes: (1) `test:e2e:snapshots` (comparison, writes `*-diff.png`), then (2) `test:e2e:snapshots:update` (regenerates baselines, clears `test-results/`, no diffs written). The "Save comparison test-results" step copies `test-results/` to `/tmp/comparison-results` between these two passes and passes it as `COMPARISON_RESULTS_DIR` to the comment script, which reads `TEST_RESULTS_DIR` from that env var. Without this step all snapshots appear "unchanged" because the diff files are gone.
 - **Acknowledging intentional changes**: If snapshots changed on purpose (UI redesign, etc.), add the `update-snapshots` label to the PR. This causes: (1) the CI failure step to be skipped so the check passes, (2) the comment status to flip to ✅ with a note that changes are acknowledged, (3) the `labeled` trigger fires a fresh CI run automatically so no manual re-run is needed. Removing the label re-enables the failure. When the PR merges, the main-branch run uploads the new screenshots as the updated baseline — no separate "regenerate on main" step required.
 - **Viewing diffs**: On failure, Playwright generates `*-actual.png`, `*-expected.png`, and `*-diff.png` in `test-results/`. Run `npx playwright show-report` to view the HTML report. The PR comment also embeds these images directly.
 - **Bootstrap**: When no `snapshot-baselines` artifact exists on main yet, all snapshots are classified as "🆕 New" and CI passes. The first main-branch run after this state uploads the initial artifact.
